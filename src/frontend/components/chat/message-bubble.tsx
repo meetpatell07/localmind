@@ -2,59 +2,77 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { cn } from "@/frontend/lib/utils";
-import type { Message } from "ai";
-import { Bot, User } from "lucide-react";
+import type { UIMessage } from "ai";
 
 interface MessageBubbleProps {
-  message: Message;
+  message: UIMessage;
+}
+
+function getTextContent(message: UIMessage): string {
+  // v6: text is in parts
+  if (message.parts?.length) {
+    return message.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("");
+  }
+  // fallback for any compat
+  return (message as unknown as { content: string }).content ?? "";
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const text = getTextContent(message);
+
+  if (!text) return null;
 
   return (
-    <div
-      className={cn(
-        "flex gap-3 w-full animate-slide-up",
-        isUser ? "flex-row-reverse" : "flex-row"
-      )}
-    >
-      {/* Avatar */}
-      <div
-        className={cn(
-          "w-7 h-7 rounded-lg shrink-0 flex items-center justify-center mt-0.5",
-          isUser
-            ? "bg-gradient-to-br from-primary/80 to-accent/60"
-            : "bg-surface-elevated ring-1 ring-border/50"
-        )}
-        aria-hidden="true"
+    <div className={`flex gap-3 w-full ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+      {/* Role label */}
+      <span
+        className="font-mono text-[9px] shrink-0 mt-1 w-8 text-right leading-none"
+        style={{
+          color: isUser ? "var(--amber)" : "hsl(215 12% 35%)",
+          paddingTop: "3px",
+        }}
       >
-        {isUser ? (
-          <User className="h-3.5 w-3.5 text-primary-foreground" />
-        ) : (
-          <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-        )}
-      </div>
+        {isUser ? "you" : "ai"}
+      </span>
 
-      {/* Message content */}
+      {/* Bubble */}
       <div
-        className={cn(
-          "max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+        className="max-w-[80%] px-4 py-3 rounded-sm text-[13px] leading-relaxed"
+        style={
           isUser
-            ? "bg-gradient-to-br from-primary to-accent text-primary-foreground rounded-tr-sm"
-            : "bg-surface-elevated ring-1 ring-border/30 text-foreground rounded-tl-sm"
-        )}
+            ? {
+                background: "var(--amber-dim)",
+                border: "1px solid rgba(240,160,21,0.2)",
+                color: "var(--amber)",
+                fontFamily: "var(--font-mono, monospace)",
+              }
+            : {
+                background: "var(--surface-raised)",
+                border: "1px solid var(--line)",
+                color: "hsl(210 18% 78%)",
+              }
+        }
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <p className="whitespace-pre-wrap font-mono text-[12px]">{text}</p>
         ) : (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-heading"
+            className="prose-localmind"
             components={{
               pre: ({ children }) => (
-                <pre className="overflow-x-auto rounded-lg border border-border/50 bg-background/80 p-3 text-xs my-3">
+                <pre
+                  className="overflow-x-auto rounded-sm p-3 text-xs my-3 font-mono"
+                  style={{
+                    background: "var(--navy)",
+                    border: "1px solid var(--line)",
+                    color: "hsl(210 18% 70%)",
+                  }}
+                >
                   {children}
                 </pre>
               ),
@@ -63,14 +81,21 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 return isBlock ? (
                   <code className={className}>{children}</code>
                 ) : (
-                  <code className="rounded-md bg-background/60 px-1.5 py-0.5 text-xs font-mono ring-1 ring-border/30">
+                  <code
+                    className="rounded-sm px-1.5 py-0.5 text-xs font-mono"
+                    style={{
+                      background: "var(--navy)",
+                      border: "1px solid var(--line)",
+                      color: "hsl(48 80% 70%)",
+                    }}
+                  >
                     {children}
                   </code>
                 );
               },
             }}
           >
-            {message.content}
+            {text}
           </ReactMarkdown>
         )}
       </div>

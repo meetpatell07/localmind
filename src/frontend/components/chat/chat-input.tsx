@@ -1,35 +1,31 @@
 "use client";
 
-import { type FormEvent, useRef, useEffect, type KeyboardEvent } from "react";
-import { Button } from "@/frontend/components/ui/button";
-import { Textarea } from "@/frontend/components/ui/textarea";
-import { SendHorizonal, Square } from "lucide-react";
+import { useState, useRef, useEffect, type KeyboardEvent } from "react";
+import { Square, ArrowRight } from "lucide-react";
 
 interface ChatInputProps {
-  input: string;
-  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
-  isLoading: boolean;
+  onSendMessage: (msg: { text: string }) => void;
+  isStreaming: boolean;
   stop?: () => void;
   disabled?: boolean;
 }
 
-export function ChatInput({
-  input,
-  onInputChange,
-  onSubmit,
-  isLoading,
-  stop,
-  disabled,
-}: ChatInputProps) {
-  const formRef = useRef<HTMLFormElement>(null);
+export function ChatInput({ onSendMessage, isStreaming, stop, disabled }: ChatInputProps) {
+  const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      formRef.current?.requestSubmit();
+      submit();
     }
+  }
+
+  function submit() {
+    const text = input.trim();
+    if (!text || disabled) return;
+    onSendMessage({ text });
+    setInput("");
   }
 
   // Auto-resize textarea
@@ -42,44 +38,67 @@ export function ChatInput({
   }, [input]);
 
   return (
-    <div className="px-6 pb-5 pt-2">
-      <form
-        ref={formRef}
-        onSubmit={onSubmit}
-        className="flex items-end gap-3 max-w-3xl mx-auto p-3 rounded-2xl bg-surface-elevated/80 ring-1 ring-border/40 focus-within:ring-primary/30 focus-within:bg-surface-elevated transition-all duration-200 backdrop-blur-sm"
+    <div
+      className="px-6 pb-5 pt-3 shrink-0"
+      style={{ borderTop: "1px solid var(--line)" }}
+    >
+      <div
+        className="flex items-end gap-3 max-w-3xl mx-auto px-4 py-3 rounded-sm transition-colors"
+        style={{
+          background: "var(--surface-raised)",
+          border: `1px solid ${input ? "rgba(240,160,21,0.25)" : "var(--line)"}`,
+        }}
       >
-        <Textarea
+        <span
+          className="font-mono text-[13px] shrink-0 mb-0.5 opacity-40"
+          style={{ color: "var(--amber)" }}
+        >
+          →
+        </span>
+        <textarea
           ref={textareaRef}
           value={input}
-          onChange={onInputChange}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message LocalMind…"
+          placeholder="message localmind..."
           disabled={disabled}
-          className="flex-1 resize-none min-h-[40px] max-h-[200px] bg-transparent border-0 shadow-none focus-visible:ring-0 text-sm placeholder:text-muted-foreground/60 p-0 px-1"
           rows={1}
           spellCheck={false}
+          className="flex-1 resize-none bg-transparent font-mono text-[13px] outline-none placeholder:opacity-20 min-h-[24px] max-h-[200px]"
+          style={{ color: "hsl(210 18% 82%)" }}
         />
-        {isLoading && stop ? (
-          <Button
+        {isStreaming && stop ? (
+          <button
             type="button"
-            variant="outline"
-            size="icon"
             onClick={stop}
-            className="shrink-0 h-8 w-8 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="shrink-0 p-1.5 rounded-sm transition-colors"
+            style={{
+              background: "rgba(248,113,113,0.1)",
+              border: "1px solid rgba(248,113,113,0.2)",
+              color: "rgba(248,113,113,0.7)",
+            }}
           >
             <Square className="h-3.5 w-3.5" />
-          </Button>
+          </button>
         ) : (
-          <Button
-            type="submit"
-            size="icon"
+          <button
+            type="button"
+            onClick={submit}
             disabled={!input.trim() || disabled}
-            className="shrink-0 h-8 w-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 disabled:shadow-none disabled:opacity-30 transition-all duration-200"
+            className="shrink-0 p-1.5 rounded-sm transition-all disabled:opacity-20"
+            style={{
+              background: input.trim() ? "var(--amber-dim)" : "transparent",
+              border: `1px solid ${input.trim() ? "rgba(240,160,21,0.3)" : "var(--line)"}`,
+              color: "var(--amber)",
+            }}
           >
-            <SendHorizonal className="h-3.5 w-3.5" />
-          </Button>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         )}
-      </form>
+      </div>
+      <p className="font-mono text-[9px] opacity-15 text-center mt-2">
+        enter to send · shift+enter for newline
+      </p>
     </div>
   );
 }

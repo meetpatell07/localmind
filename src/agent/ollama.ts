@@ -1,13 +1,14 @@
-import { createOllama } from "ollama-ai-provider";
+import { createOpenAI } from "@ai-sdk/openai";
 import { OLLAMA_BASE_URL, OLLAMA_MODEL } from "@/shared/constants";
 
-export const ollama = createOllama({
-  baseURL: `${OLLAMA_BASE_URL}/api`,
+// Ollama exposes an OpenAI-compatible API at /v1
+const ollamaProvider = createOpenAI({
+  baseURL: `${OLLAMA_BASE_URL}/v1`,
+  apiKey: "ollama", // required by the client, ignored by Ollama
 });
 
-export const chatModel = ollama(OLLAMA_MODEL);
-
-export const extractionModel = ollama(OLLAMA_MODEL);
+export const chatModel = ollamaProvider(OLLAMA_MODEL);
+export const extractionModel = ollamaProvider(OLLAMA_MODEL);
 
 export async function checkOllamaHealth(): Promise<boolean> {
   try {

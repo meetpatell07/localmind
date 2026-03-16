@@ -1,30 +1,68 @@
-import { logMessage, incrementSessionTurns } from "./episodic";
+import { logMessage, incrementSessionTurns, getRecentHistoryAllSessions, getRecentSessionSummaries } from "./episodic";
 import { embedAndStore, searchSimilar } from "./semantic";
 import { processExtractedEntities, getEntityContext } from "./entity";
 import { getProfile, maybeRebuildProfile } from "./profile";
 import { extractEntitiesFromConversation } from "@/agent/extract";
-import type { MemoryContext } from "@/shared/types";
+import type { MemoryContext, RecentTurn } from "@/shared/types";
 
 let globalInteractionCount = 0;
+
+// Detect queries asking about past conversations
+function isMetaMemoryQuery(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("last time") ||
+    lower.includes("previously") ||
+    lower.includes("before") ||
+    lower.includes("earlier") ||
+    lower.includes("remember when") ||
+    lower.includes("what did we") ||
+    lower.includes("what have we") ||
+    lower.includes("what did i tell") ||
+    lower.includes("what did i say") ||
+    lower.includes("did i mention") ||
+    lower.includes("recall") ||
+    lower.includes("past conversation") ||
+    lower.includes("history") ||
+    lower.includes("talked about")
+  );
+}
 
 /**
  * Recall relevant context for a user message.
  * Called before generating a response.
  */
 export async function recall(userMessage: string): Promise<MemoryContext> {
-  const [profileText, relevantMemories] = await Promise.all([
+  const meta = isMetaMemoryQuery(userMessage);
+
+  // Always fetch: profile + recent history + session summaries
+  // For meta queries, fetch more history; otherwise fetch less
+  const historyLimit = meta ? 40 : 20;
+
+  const [profileText, relevantMemories, recentHistoryRaw, sessionSummaries] = await Promise.all([
     getProfile(),
     searchSimilar(userMessage),
+    getRecentHistoryAllSessions(historyLimit),
+    getRecentSessionSummaries(5),
   ]);
 
   // Extract entity names from the query for targeted lookup
   const entityNames = extractMentionedNames(userMessage);
   const relevantEntities = await getEntityContext(entityNames);
 
+  const recentHistory: RecentTurn[] = recentHistoryRaw.map((r) => ({
+    role: r.role as "user" | "assistant",
+    content: r.content,
+    createdAt: r.createdAt.toISOString(),
+    sessionId: r.sessionId,
+  }));
+
   return {
     profile: profileText,
     relevantMemories,
     relevantEntities,
+    recentHistory,
+    sessionSummaries,
   };
 }
 

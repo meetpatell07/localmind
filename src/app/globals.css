@@ -10,6 +10,7 @@
     --font-heading: 'Satoshi', system-ui, sans-serif;
     --font-body: 'General Sans', system-ui, sans-serif;
 
+    /* Shadcn compatibility tokens */
     --background: 220 20% 97%;
     --foreground: 220 20% 10%;
     --card: 220 15% 95%;
@@ -30,10 +31,17 @@
     --input: 220 13% 87%;
     --ring: 38 92% 50%;
     --radius: 0.75rem;
-
     --surface-elevated: 220 15% 93%;
     --surface-overlay: 220 15% 90%;
     --glow: 38 92% 50%;
+
+    /* Precision Dark Amber design tokens */
+    --amber: #F0A015;
+    --amber-dim: rgba(240, 160, 21, 0.12);
+    --navy: #07080F;
+    --surface: #0D0F1A;
+    --surface-raised: #111320;
+    --line: rgba(255, 255, 255, 0.06);
   }
 
   .dark {
@@ -56,7 +64,6 @@
     --border: 220 15% 14%;
     --input: 220 15% 14%;
     --ring: 38 92% 50%;
-
     --surface-elevated: 225 20% 10%;
     --surface-overlay: 225 20% 12%;
     --glow: 38 92% 50%;

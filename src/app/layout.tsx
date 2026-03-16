@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { TabNav } from "@/frontend/components/layout/tab-nav";
-import { Brain } from "lucide-react";
+import { OllamaStatus } from "@/frontend/components/layout/ollama-status";
+import { MobileNav } from "@/frontend/components/layout/mobile-nav";
 
 export const metadata: Metadata = {
   title: "LocalMind",
@@ -15,57 +16,89 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="flex h-screen overflow-hidden font-body">
-        {/* Skip to main content — accessibility */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
+      <body
+        className="flex h-screen overflow-hidden"
+        style={{ background: "var(--navy)", color: "hsl(210 18% 80%)" }}
+      >
+        {/* Sidebar — hidden on mobile */}
+        <aside
+          className="hidden md:flex w-52 shrink-0 flex-col"
+          style={{
+            background: "var(--surface)",
+            borderRight: "1px solid var(--line)",
+          }}
         >
-          Skip to main content
-        </a>
-
-        {/* Sidebar */}
-        <aside className="w-56 shrink-0 flex flex-col border-r border-border/50 bg-card/50 backdrop-blur-sm relative">
-          {/* Gradient border effect */}
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
-
           {/* Logo */}
-          <div className="px-5 py-5 border-b border-border/30">
+          <div
+            className="px-5 py-5"
+            style={{ borderBottom: "1px solid var(--line)" }}
+          >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/90 to-accent/70 flex items-center justify-center shadow-lg shadow-primary/20">
-                <Brain className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
+              <div
+                className="w-7 h-7 rounded-sm flex items-center justify-center shrink-0"
+                style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)" }}
+              >
+                <span style={{ color: "var(--amber)", fontSize: "14px", fontFamily: "var(--font-mono, monospace)" }}>
+                  ◈
+                </span>
               </div>
               <div>
-                <h1 className="text-base font-heading font-bold text-foreground tracking-tight">
+                <p
+                  className="font-mono text-[13px] tracking-wider"
+                  style={{ color: "hsl(210 18% 88%)" }}
+                >
                   LocalMind
-                </h1>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                  Personal AI
+                </p>
+                <p
+                  className="font-mono text-[9px] tracking-widest uppercase opacity-30"
+                >
+                  personal ai
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Nav */}
           <TabNav />
 
-          {/* Bottom section */}
-          <div className="mt-auto px-4 py-4 border-t border-border/30">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center text-xs font-heading font-bold text-foreground">
+          {/* Bottom — Ollama status + user */}
+          <div
+            className="mt-auto px-4 py-4 space-y-3"
+            style={{ borderTop: "1px solid var(--line)" }}
+          >
+            <OllamaStatus />
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-6 h-6 rounded-sm flex items-center justify-center font-mono text-[11px] shrink-0"
+                style={{
+                  background: "var(--amber-dim)",
+                  color: "var(--amber)",
+                  border: "1px solid rgba(240,160,21,0.2)",
+                }}
+              >
                 M
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">Meet</p>
-                <p className="text-[10px] text-muted-foreground">Local · Online</p>
+              <div>
+                <p className="font-mono text-[11px]" style={{ color: "hsl(210 18% 70%)" }}>
+                  Meet
+                </p>
+                <p className="font-mono text-[9px] opacity-25">localhost</p>
               </div>
             </div>
           </div>
         </aside>
 
-        {/* Main content */}
-        <main id="main-content" className="flex-1 overflow-hidden">
-          {children}
+        {/* Main */}
+        <main
+          id="main-content"
+          className="flex-1 overflow-hidden flex flex-col"
+          style={{ background: "var(--navy)" }}
+        >
+          {/* Mobile top bar */}
+          <MobileNav />
+          <div className="flex-1 overflow-hidden">
+            {children}
+          </div>
         </main>
       </body>
     </html>

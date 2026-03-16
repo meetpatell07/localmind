@@ -1,20 +1,20 @@
-import { streamText, convertToCoreMessages } from "ai";
-import type { Message } from "ai";
+import { streamText, convertToModelMessages, DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
 import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recall, remember, createSession } from "@/memory";
 import { z } from "zod";
 
+// DefaultChatTransport is just used for the type reference; actual shape validated by Zod
+void DefaultChatTransport;
+
 const RequestSchema = z.object({
-  // Accept the full AI SDK Message shape — id, createdAt, content, role, etc.
-  messages: z.array(
-    z.object({
-      id: z.string().optional(),
-      role: z.enum(["user", "assistant", "system", "data"]),
-      content: z.string(),
-      createdAt: z.coerce.date().optional(),
-    }).passthrough()
-  ),
+  messages: z.array(z.object({
+    id: z.string().optional(),
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string().optional().default(""),
+    parts: z.array(z.any()).optional(),
+  }).passthrough()),
   sessionId: z.string().uuid().nullish(),
 });
 
@@ -36,43 +36,59 @@ export async function POST(req: Request): Promise<Response> {
 
   const { messages, sessionId: incomingSessionId } = parsed.data;
 
-  // Get the last user message for memory ops
+  // Extract text from the last user message (parts or content)
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUserMsg) {
     return Response.json({ error: "No user message" }, { status: 400 });
   }
 
+  // v6 UIMessage: text lives in parts[].text; fall back to content for compat
+  const userText: string = (() => {
+    if (lastUserMsg.parts) {
+      const textPart = (lastUserMsg.parts as Array<{type: string; text?: string}>)
+        .find((p) => p.type === "text");
+      if (textPart?.text) return textPart.text;
+    }
+    return (lastUserMsg.content as string) ?? "";
+  })();
+
   const sessionId = incomingSessionId ?? (await createSession());
 
-  // Recall memory context (non-blocking on failure)
+  // Recall memory context
   let memoryCtx;
   try {
-    memoryCtx = await recall(lastUserMsg.content);
+    memoryCtx = await recall(userText);
   } catch {
-    memoryCtx = { profile: null, relevantMemories: [], relevantEntities: [] };
+    memoryCtx = {
+      profile: null,
+      relevantMemories: [],
+      relevantEntities: [],
+      recentHistory: [],
+      sessionSummaries: [],
+    };
   }
 
   const systemPrompt = buildSystemPrompt(memoryCtx);
 
-  // Convert AI SDK UIMessages → CoreMessages for streamText
-  const coreMessages = convertToCoreMessages(messages as Message[]);
+  // v6: convertToModelMessages (was convertToCoreMessages in v4)
+  const modelMessages = await convertToModelMessages(messages as UIMessage[]);
 
   const result = streamText({
     model: chatModel,
     system: systemPrompt,
-    messages: coreMessages,
+    messages: modelMessages,
     temperature: 0.7,
     onFinish: async ({ text }) => {
-      // Post-response async: L1 log → L2 embed → L3 extract → L4 profile
       try {
-        await remember(sessionId, lastUserMsg.content, text);
+        await remember(sessionId, userText, text);
       } catch {
-        // Non-fatal — never block the response pipeline
+        // Non-fatal
       }
     },
   });
 
-  const response = result.toDataStreamResponse();
+  // v6: toUIMessageStreamResponse (was toDataStreamResponse in v4)
+  const response = result.toUIMessageStreamResponse();
   const headers = new Headers(response.headers);
   headers.set("X-Session-Id", sessionId);
 

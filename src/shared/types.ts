@@ -10,10 +10,19 @@ export interface ChatMessage {
   createdAt: Date;
 }
 
+export interface RecentTurn {
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  sessionId: string;
+}
+
 export interface MemoryContext {
   profile: string | null;
   relevantMemories: string[];
   relevantEntities: EntityWithRelationships[];
+  recentHistory: RecentTurn[];        // L1 episodic: last N turns across sessions
+  sessionSummaries: string[];         // Summaries of recent past sessions
 }
 
 export interface EntityWithRelationships {

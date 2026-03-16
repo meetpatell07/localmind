@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { entities, relationships, conversations } from "@/db/schema";
 import { getProfile, rebuildProfile } from "@/memory/profile";
 import { searchSimilar } from "@/memory/semantic";
+import { summarizeSession, createSession } from "@/memory/episodic";
 import { eq, and, desc, ilike } from "drizzle-orm";
 
 // GET /api/memory?type=profile|entities|search&q=...
@@ -95,6 +96,23 @@ export async function POST(req: Request): Promise<Response> {
     } catch (e) {
       return Response.json({ error: String(e) }, { status: 500 });
     }
+  }
+
+  if (action === "summarize-session") {
+    const body = await req.json().catch(() => ({})) as { sessionId?: string };
+    const { sessionId } = body;
+    if (!sessionId) return Response.json({ error: "Missing sessionId" }, { status: 400 });
+    try {
+      const summary = await summarizeSession(sessionId);
+      return Response.json({ summary });
+    } catch (e) {
+      return Response.json({ error: String(e) }, { status: 500 });
+    }
+  }
+
+  if (action === "create-session") {
+    const sessionId = await createSession();
+    return Response.json({ sessionId });
   }
 
   return Response.json({ error: "Unknown action" }, { status: 400 });
