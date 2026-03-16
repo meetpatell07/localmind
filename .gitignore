@@ -11,3 +11,5 @@ scripts/error-log.jsonl
 .idea/
 models/
 drizzle/meta/
+.claude/
+CLAUDE.md

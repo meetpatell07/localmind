@@ -1,84 +1,77 @@
-# Sprint Plan — 24 Hours to Working Prototype
+# Sprint Plan — 24 Hours
 
 ## Hour 0-2: Foundation
 - [ ] `pnpm create next-app@latest localmind --ts --tailwind --app --src-dir`
-- [ ] Install deps: `pnpm add drizzle-orm @neondatabase/serverless zod zustand`
-- [ ] Install dev deps: `pnpm add -D drizzle-kit @types/node`
-- [ ] Set up .env.local with DATABASE_URL (create Neon project, enable pgvector)
-- [ ] Create `src/db/schema.ts` (copy from this project's schema)
-- [ ] Create `src/db/index.ts` (Neon + Drizzle client)
-- [ ] Create `drizzle.config.ts`
+- [ ] Restructure: move app/ into `src/frontend/app/`, update next.config.ts
+- [ ] Install core: `pnpm add drizzle-orm @neondatabase/serverless ai ollama-ai-provider zod zustand`
+- [ ] Install dev: `pnpm add -D drizzle-kit`
+- [ ] Install UI: `pnpx shadcn-ui@latest init` → add button, input, card, tabs, dialog, scroll-area, textarea, badge, separator
+- [ ] Copy schema.ts into src/db/schema.ts
+- [ ] Create src/db/index.ts (Neon connection + Drizzle client)
+- [ ] Create drizzle.config.ts pointing to src/db/schema.ts
+- [ ] Set up .env.local with DATABASE_URL
 - [ ] Run `pnpm db:generate` + `pnpm db:migrate`
-- [ ] Add pgvector extension: `CREATE EXTENSION IF NOT EXISTS vector;`
-- [ ] Add vector column + HNSW index via raw SQL migration
-- [ ] Install shadcn/ui: `pnpx shadcn-ui@latest init` + add button, input, card, tabs, dialog
-- [ ] Verify: `pnpm dev` → localhost:3000 shows Next.js page
+- [ ] In Neon SQL Editor: `CREATE EXTENSION IF NOT EXISTS vector;`
+- [ ] Add vector column + HNSW index via raw SQL
+- [ ] Verify: `pnpm dev` → localhost:3000
 
-## Hour 2-6: Chat + Ollama Integration (CORE)
-- [ ] Create `src/agent/ollama.ts` — chat client with streaming + embeddings
-- [ ] Create `src/agent/prompt-builder.ts` — assembles system + profile + context + user
-- [ ] Create `src/app/api/chat/route.ts` — POST streaming endpoint
-- [ ] Create `src/app/chat/page.tsx` — chat UI with message list + input
-- [ ] Create `src/components/message-bubble.tsx` — renders markdown, streams tokens
-- [ ] Wire up: type message → hits API → streams Ollama response → renders in UI
+## Hour 2-6: Chat + AI SDK (CORE)
+- [ ] Create src/agent/ollama.ts — Ollama via AI SDK provider
+- [ ] Create src/agent/prompt-builder.ts — assembles system + profile + memory + user
+- [ ] Create src/frontend/app/api/chat/route.ts — streaming via AI SDK `streamText()`
+- [ ] Create src/frontend/app/chat/page.tsx — chat page using `useChat()` from ai/react
+- [ ] Create src/frontend/components/chat/message-list.tsx
+- [ ] Create src/frontend/components/chat/message-bubble.tsx (markdown rendering)
+- [ ] Create src/frontend/components/chat/chat-input.tsx
+- [ ] Create src/frontend/app/layout.tsx with tab navigation (sidebar or top tabs)
 - [ ] Handle Ollama offline state (retry banner)
-- [ ] TEST: Have a conversation with your local LLM through the dashboard
+- [ ] TEST: Have a streaming conversation with local Ollama
 
 ## Hour 6-10: Memory System (DIFFERENTIATOR)
-- [ ] Create `src/memory/episodic.ts` — insert/query conversations table
-- [ ] Create `src/memory/semantic.ts` — embed chunks + similarity search via pgvector
-- [ ] Create `src/memory/entity.ts` — extract entities/relationships from conversations
-- [ ] Create `src/agent/extract.ts` — Ollama prompt that outputs JSON entities + Zod validation
-- [ ] Create `src/memory/profile.ts` — aggregate entities → user profile summary text
-- [ ] Create `src/memory/index.ts` — unified API: remember(), recall(), getProfile()
-- [ ] Wire into chat: post-response async pipeline (L1→L2→L3→L4)
+- [ ] Create src/memory/episodic.ts — insert + query conversations table
+- [ ] Create src/memory/semantic.ts — embed chunks + pgvector similarity search
+- [ ] Create src/agent/extract.ts — Ollama structured output → JSON entities + Zod validation
+- [ ] Create src/memory/entity.ts — entities + relationships CRUD with dedup
+- [ ] Create src/memory/profile.ts — aggregate entities → profile summary
+- [ ] Create src/memory/index.ts — unified API: remember(), recall(), getProfile()
+- [ ] Wire into chat API: post-response async pipeline (L1→L2→L3→L4)
 - [ ] Update prompt-builder to inject profile + relevant memories
-- [ ] TEST: Tell the agent your name, favorite food, job → verify it remembers next session
+- [ ] Create src/frontend/app/api/memory/route.ts — search + profile endpoints
+- [ ] TEST: Tell agent your name and job → close session → reopen → verify it remembers
 
-## Hour 10-13: Dashboard Tabs
-- [ ] Create layout with tab navigation (shadcn Tabs or sidebar)
+## Hour 10-14: Dashboard Tabs
+- [ ] Create src/frontend/components/layout/sidebar.tsx or tab-nav.tsx
 - [ ] Chat tab: already done
-- [ ] Memory tab (`src/app/memory/page.tsx`): show profile, entity list, recent memories, search
-- [ ] Planner tab (`src/app/planner/page.tsx`): task list with add/edit/complete, basic Kanban
-- [ ] Create `src/app/api/tasks/route.ts` — CRUD for tasks table
-- [ ] Create `src/app/api/memory/route.ts` — search memories, view profile, view entities
-- [ ] TEST: Create tasks, view your memory profile, switch between tabs
+- [ ] Memory tab (src/frontend/app/memory/page.tsx): profile card, entity list, memory search
+- [ ] Create src/frontend/components/memory/profile-card.tsx
+- [ ] Create src/frontend/components/memory/entity-list.tsx
+- [ ] Planner tab (src/frontend/app/planner/page.tsx): task list + basic Kanban
+- [ ] Create src/planner/tasks.ts — CRUD for tasks table
+- [ ] Create src/frontend/app/api/tasks/route.ts
+- [ ] Create src/frontend/components/planner/task-card.tsx
+- [ ] Create src/frontend/components/planner/kanban-board.tsx
+- [ ] TEST: Create tasks, view memory profile, switch tabs
 
-## Hour 13-16: File Vault + MCP Basics
-- [ ] Create `src/app/files/page.tsx` — file browser showing vault_files from DB
-- [ ] Create file upload API: accept file → save to local vault dir → index metadata in DB
-- [ ] Create `src/app/api/files/route.ts` — upload, list, search
-- [ ] Basic MCP client (`src/mcp/client.ts`) — connect to filesystem MCP server
-- [ ] Connections tab (`src/app/connections/page.tsx`) — list of MCP servers with on/off toggles
-- [ ] TEST: Upload a PDF, see it in files tab, ask the AI about it
+## Hour 14-17: Files + Voice
+- [ ] Files tab (src/frontend/app/files/page.tsx) — file browser
+- [ ] Create src/frontend/app/api/files/route.ts — upload, list, search
+- [ ] Create src/vault/indexer.ts — file metadata → Postgres
+- [ ] Create src/vault/organizer.ts — auto-organize into YYYY/MM/DD
+- [ ] Voice tab (src/frontend/app/voice/page.tsx) — push-to-talk
+- [ ] Use browser Web Speech API (SpeechRecognition + speechSynthesis)
+- [ ] Wire voice → chat API → voice response
+- [ ] TEST: Upload a file, talk to AI via voice
 
-## Hour 16-19: Voice + Polish
-- [ ] Voice tab (`src/app/voice/page.tsx`) — push-to-talk button + transcript display
-- [ ] Integrate Whisper.cpp for STT (or browser Web Speech API as fast fallback)
-- [ ] Integrate Piper TTS for responses (or browser speechSynthesis as fast fallback)
-- [ ] Wire voice → chat API → voice response loop
-- [ ] Polish: loading skeletons, error states, dark mode, responsive layout
-- [ ] TEST: Talk to your AI, hear it respond
+## Hour 17-20: AI Planner + Polish
+- [ ] Create src/planner/ai-planner.ts — generate daily plan from tasks + profile
+- [ ] Natural language task creation: "remind me to..." → parse → create task
+- [ ] Polish: loading skeletons, error states, dark mode toggle
+- [ ] Responsive layout for mobile
+- [ ] Session summaries: summarize conversation on tab close
 
-## Hour 19-22: AI Planner + Proactive Features
-- [ ] AI daily planner: generate today's plan from tasks + profile
-- [ ] Natural language task creation: "remind me to..." → creates task with parsed due date
-- [ ] Add `/api/planner/daily` route — AI-generated daily briefing
-- [ ] Session summaries: on tab close, summarize the conversation
-- [ ] TEST: Ask AI to plan your day, create tasks via natural language
-
-## Hour 22-24: Integration Test + Deploy
-- [ ] End-to-end test: chat → memory persists → entities extracted → profile built → planner works
-- [ ] Write 5-10 critical Vitest tests (Ollama mock, memory pipeline, task CRUD)
-- [ ] Fix any broken edges
-- [ ] Document: update README with setup instructions
-- [ ] Optional: Docker Compose for Ollama + app
+## Hour 20-24: Test + Ship
+- [ ] End-to-end test: chat → memory persists → entities extracted → profile built
+- [ ] Write 5-10 Vitest tests (Ollama mock, memory pipeline, task CRUD)
+- [ ] Fix broken edges
+- [ ] Update README with setup instructions
 - [ ] SHIP IT
-
-## What to Skip in Sprint 1
-- Arduino / ambient sensing
-- WhatsApp / Telegram integration (use dashboard chat only)
-- Gmail / Calendar MCP (just filesystem MCP)
-- Migration to local SQLite (week 2)
-- Comprehensive test coverage (ship first, test later)
-- Auth (single user, localhost only)

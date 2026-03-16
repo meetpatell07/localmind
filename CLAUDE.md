@@ -1,89 +1,161 @@
 # LocalMind — CLAUDE.md
 
 ## What This Is
-Personal AI agent. Runs 24/7. Learns about its owner. Local LLM, cloud DB, tabbed dashboard.
-Sprint 1: ship a working prototype in 24 hours.
+Personal AI agent. Single user (Meet), no auth needed. Runs 24/7, learns about its owner over time. Local LLM inference, cloud-persistent memory, tabbed dashboard.
 
 ## Stack
-- **Next.js 14** App Router, TypeScript strict, Tailwind + shadcn/ui
-- **Neon Postgres** (pgvector) — single DB for everything, migrate sensitive data local later
-- **Drizzle ORM** + drizzle-kit — schema in `src/db/schema.ts`
-- **Ollama** localhost:11434 — Qwen 2.5 7B chat, nomic-embed-text embeddings
-- **Whisper.cpp** STT + **Piper** TTS — local voice, CPU-only
-- **MCP** for tool connectors (Gmail, Calendar, files)
+- **Framework**: Next.js 14+ App Router, TypeScript strict
+- **AI**: Vercel AI SDK (`ai` package) + Ollama provider (`ollama-ai-provider`)
+- **LLM**: Ollama localhost:11434 — Qwen 2.5 7B (chat), nomic-embed-text (embeddings)
+- **Database**: Neon Postgres with pgvector — single DB for everything
+- **ORM**: Drizzle ORM + drizzle-kit
+- **Styling**: Tailwind CSS + shadcn/ui
+- **State**: Zustand (global) + React hooks (local)
+- **Voice**: Browser Web Speech API for sprint 1 (Whisper.cpp + Piper week 2)
+- **Validation**: Zod everywhere
+
+## What We Are NOT Building in Sprint 1
+- No auth (single user, localhost only)
+- No MCP tool connections (Gmail, Calendar, etc. — week 2)
+- No Arduino/ambient sensing
+- No messaging integrations (WhatsApp, Telegram — week 2)
+- No Docker
 
 ## Commands
-- `pnpm install` → `pnpm dev` → open localhost:3000
-- `pnpm db:generate` → `pnpm db:migrate` (push schema to Neon)
-- `pnpm db:studio` (visual DB browser)
-- `pnpm test` (Vitest) → `pnpm lint:fix`
+- `pnpm install`
+- `pnpm dev` — starts Next.js on localhost:3000
+- `pnpm build` — production build
+- `pnpm test` — Vitest
+- `pnpm lint:fix` — ESLint + Prettier
+- `pnpm db:generate` — drizzle-kit generate
+- `pnpm db:migrate` — drizzle-kit migrate (push to Neon)
+- `pnpm db:studio` — Drizzle Studio (visual DB browser)
 
-## Sprint Plan (24 Hours)
-@docs/sprint-plan.md
+## Project Structure
+```
+localmind/
+├── CLAUDE.md                     # This file — Claude Code reads first
+├── .claude/rules/                # Modular rules (auto-loaded)
+├── .env.local                    # Secrets (gitignored)
+├── .env.example                  # Template for .env.local
+├── docs/                         # Architecture docs (@imported)
+├── scripts/                      # Error learning system
+├── src/
+│   ├── db/
+│   │   ├── schema.ts             # Drizzle schema (ALL tables)
+│   │   ├── index.ts              # Neon + Drizzle client
+│   │   └── migrations/           # drizzle-kit output
+│   ├── agent/
+│   │   ├── ollama.ts             # Ollama client via AI SDK
+│   │   ├── prompt-builder.ts     # system + profile + memory + user → prompt
+│   │   └── extract.ts            # Entity/relationship extraction
+│   ├── memory/
+│   │   ├── episodic.ts           # L1: conversation logs
+│   │   ├── semantic.ts           # L2: pgvector similarity search
+│   │   ├── entity.ts             # L3: entities + relationships
+│   │   ├── profile.ts            # L4: user profile summary
+│   │   └── index.ts              # Unified memory API
+│   ├── planner/
+│   │   ├── tasks.ts              # Task CRUD
+│   │   └── ai-planner.ts         # AI daily plans
+│   ├── vault/
+│   │   ├── indexer.ts            # File metadata → Postgres
+│   │   └── organizer.ts          # YYYY/MM/DD structure
+│   ├── frontend/
+│   │   ├── app/                  # Next.js App Router pages
+│   │   │   ├── layout.tsx        # Root layout + tab navigation
+│   │   │   ├── page.tsx          # Dashboard home / redirect to chat
+│   │   │   ├── chat/
+│   │   │   │   └── page.tsx      # Chat tab
+│   │   │   ├── memory/
+│   │   │   │   └── page.tsx      # Memory viewer tab
+│   │   │   ├── planner/
+│   │   │   │   └── page.tsx      # Tasks/Kanban tab
+│   │   │   ├── files/
+│   │   │   │   └── page.tsx      # File vault tab
+│   │   │   ├── voice/
+│   │   │   │   └── page.tsx      # Voice tab
+│   │   │   └── api/
+│   │   │       ├── chat/
+│   │   │       │   └── route.ts  # Streaming chat endpoint (AI SDK)
+│   │   │       ├── memory/
+│   │   │       │   └── route.ts  # Memory search + profile
+│   │   │       ├── tasks/
+│   │   │       │   └── route.ts  # Task CRUD
+│   │   │       └── files/
+│   │   │           └── route.ts  # File upload + list
+│   │   ├── components/           # Shared React components
+│   │   │   ├── chat/
+│   │   │   │   ├── message-list.tsx
+│   │   │   │   ├── message-bubble.tsx
+│   │   │   │   └── chat-input.tsx
+│   │   │   ├── planner/
+│   │   │   │   ├── task-card.tsx
+│   │   │   │   └── kanban-board.tsx
+│   │   │   ├── memory/
+│   │   │   │   ├── profile-card.tsx
+│   │   │   │   └── entity-list.tsx
+│   │   │   ├── layout/
+│   │   │   │   ├── sidebar.tsx
+│   │   │   │   └── tab-nav.tsx
+│   │   │   └── ui/               # shadcn/ui components
+│   │   └── lib/
+│   │       ├── stores/           # Zustand stores
+│   │       └── utils.ts          # Client helpers (cn, formatDate, etc.)
+│   └── shared/
+│       ├── types.ts              # Shared TypeScript types
+│       ├── constants.ts          # App constants
+│       └── schemas.ts            # Shared Zod schemas
+├── vault/                        # Local file storage (gitignored)
+├── drizzle.config.ts
+├── next.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+## Code Rules
+- TypeScript strict — no `any`, no untyped `as` casts
+- Named exports only, never default exports
+- Functional React components with hooks only
+- Zod for ALL external data validation
+- All dates: ISO 8601 → `timestamp with time zone` in Postgres
+- `@/` path alias for `src/`
+- Drizzle queries only — raw SQL only for pgvector similarity ops
+
+## Critical Rules
+- NEVER hardcode DATABASE_URL — .env.local only
+- ALWAYS null-check Ollama responses — undefined on timeout
+- ALWAYS use parameterized Drizzle queries — never string interpolation
+- ALWAYS handle Ollama offline: show "AI starting up..." + auto-retry
+- ALWAYS stream chat responses via Vercel AI SDK `streamText()`
+- Memory pipeline is POST-RESPONSE, ASYNC — never block the user
+
+## AI SDK Usage Pattern
+```typescript
+import { streamText } from "ai";
+import { ollama } from "ollama-ai-provider";
+
+const result = streamText({
+  model: ollama("qwen2.5:7b"),
+  system: profilePrompt + memoryContext,
+  messages: conversationHistory,
+});
+return result.toDataStreamResponse();
+```
+Client side: use `useChat()` hook from `ai/react` for streaming UI.
+
+## Memory Architecture
+@docs/memory-architecture.md
 
 ## Schema
 @src/db/schema.ts
 
-## Architecture
-@docs/architecture.md
-
-## Project Structure
-```
-src/
-├── db/schema.ts              # Drizzle schema (ALL tables)
-├── db/index.ts               # Neon connection + Drizzle client
-├── agent/
-│   ├── ollama.ts             # Chat + embeddings client
-│   ├── prompt-builder.ts     # system + profile + memory + user → prompt
-│   └── extract.ts            # Entity/relationship extraction
-├── memory/
-│   ├── episodic.ts           # L1: log conversations
-│   ├── semantic.ts           # L2: embed + similarity search
-│   ├── entity.ts             # L3: entities + relationships CRUD
-│   ├── profile.ts            # L4: user profile rebuild
-│   └── index.ts              # Unified memory API
-├── app/                      # Next.js pages
-│   ├── page.tsx              # Dashboard home
-│   ├── chat/page.tsx         # Chat tab
-│   ├── memory/page.tsx       # Memory viewer
-│   ├── planner/page.tsx      # Tasks/plans
-│   ├── api/chat/route.ts     # Chat API (streaming)
-│   ├── api/memory/route.ts   # Memory CRUD
-│   └── api/tasks/route.ts    # Planner CRUD
-├── components/               # Shared UI
-├── lib/                      # Client utils
-└── shared/                   # Types, Zod schemas, constants
-```
-
-## Code Rules
-- TypeScript strict, no `any`, no untyped `as` casts
-- Named exports only
-- Zod for all external data (Ollama responses, MCP results, API inputs)
-- All dates: ISO 8601 with timezone → `timestamp with time zone` in Postgres
-- Drizzle queries only — raw SQL only for pgvector similarity ops
-- `@/` path alias for `src/`
-
-## Critical Rules
-- NEVER hardcode DATABASE_URL — .env.local only
-- ALWAYS null-check Ollama responses (undefined on timeout)
-- ALWAYS use parameterized Drizzle queries — never string interpolation
-- ALWAYS handle Ollama offline: show "AI starting up..." + retry every 3s
-- ALWAYS stream chat responses (`stream: true`)
-- Memory pipeline is POST-RESPONSE and ASYNC — never block the user
+## Sprint Plan
+@docs/sprint-plan.md
 
 ## Error Self-Learning
 After fixing any bug:
-1. Log: `node scripts/log-error.mjs --error "..." --fix "..." --category "..." --lesson "..."`
-2. Lessons auto-append to `.claude/rules/lessons-learned.md`
-3. Claude Code reads updated lessons on next session
-@scripts/error-learning-protocol.md
-
-## Migration Notes (Week 2)
-Tables that move to local SQLite later (privacy):
-- `conversations` (raw message content)
-- `embeddings` (can reverse-engineer to original text)
-- `entities` + `relationships` (personal knowledge graph)
-- `profile` (user summary)
-Tables that stay in Neon (low sensitivity, benefit from cloud):
-- `sessions`, `tasks`, `vault_files`, `mcp_tool_log`, `settings`
-Drizzle supports both drivers — schema stays ~identical, just swap the connection.
+1. Log it: `node scripts/log-error.mjs --error "..." --fix "..." --category "..." --lesson "..."`
+2. Auto-updates `.claude/rules/lessons-learned.md`
+3. Claude Code reads updated lessons next session

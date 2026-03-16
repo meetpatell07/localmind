@@ -74,10 +74,7 @@ function buildLessonsMarkdown(grouped) {
     database: 'Database Lessons',
     ollama: 'Ollama Lessons',
     memory: 'Memory Lessons',
-    mcp: 'MCP Lessons',
-    dashboard: 'Dashboard Lessons',
-    voice: 'Voice Lessons',
-    vault: 'Vault Lessons',
+    frontend: 'Frontend Lessons',
     general: 'General Lessons',
   };
 
