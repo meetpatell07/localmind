@@ -50,16 +50,18 @@ export default function ChatPage() {
     <div className="flex flex-col h-full">
       {/* Offline banner */}
       {(!ollamaOnline || error) && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-destructive text-sm">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>AI is starting up...</span>
+        <div className="flex items-center gap-3 px-6 py-2.5 bg-destructive/5 border-b border-destructive/10 text-sm animate-slide-up">
+          <div className="flex items-center gap-2 text-destructive/80">
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="font-medium">AI is starting up…</span>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            className="ml-auto h-6 px-2 text-destructive hover:text-destructive"
+            className="ml-auto h-7 px-3 text-xs text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg"
             onClick={checkOllama}
           >
-            <RefreshCw className="h-3 w-3 mr-1" />
+            <RefreshCw className="h-3 w-3 mr-1.5" aria-hidden="true" />
             Retry
           </Button>
         </div>

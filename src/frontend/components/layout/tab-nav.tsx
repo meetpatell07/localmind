@@ -23,7 +23,7 @@ export function TabNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1 p-2">
+    <nav className="flex flex-col gap-1 p-3" aria-label="Main navigation">
       {tabs.map(({ href, label, icon: Icon }) => {
         const active = pathname.startsWith(href);
         return (
@@ -31,14 +31,30 @@ export function TabNav() {
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                ? "bg-primary/10 text-primary shadow-sm"
+                : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
-            <span>{label}</span>
+            {/* Active glow indicator */}
+            {active && (
+              <div
+                className="absolute inset-0 rounded-xl bg-primary/5 ring-1 ring-primary/20"
+                aria-hidden="true"
+              />
+            )}
+
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0 relative z-10 transition-transform duration-200",
+                active
+                  ? "text-primary"
+                  : "group-hover:scale-110"
+              )}
+              aria-hidden="true"
+            />
+            <span className="relative z-10">{label}</span>
           </Link>
         );
       })}
