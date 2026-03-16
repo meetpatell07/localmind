@@ -1,0 +1,44 @@
+import { NextResponse } from "next/server";
+import { getGoogleConnectionStatus, disconnectGoogle } from "@/connectors/google-auth";
+import { db } from "@/db";
+import { connectors } from "@/db/schema";
+
+export async function GET(): Promise<Response> {
+  try {
+    const google = await getGoogleConnectionStatus();
+
+    // Placeholder statuses for future connectors
+    const notion = { connected: false };
+    const calendar = google.connected; // shares Google OAuth
+
+    return NextResponse.json({
+      connectors: {
+        google: {
+          ...google,
+          services: google.connected ? ["gmail", "calendar"] : [],
+        },
+        notion,
+        calendar,
+      },
+    });
+  } catch (err) {
+    console.error("[connectors/status]", err);
+    return NextResponse.json({ connectors: {} }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request): Promise<Response> {
+  const { searchParams } = new URL(req.url);
+  const provider = searchParams.get("provider");
+
+  if (provider === "google") {
+    try {
+      await disconnectGoogle();
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ error: "Unknown provider" }, { status: 400 });
+}

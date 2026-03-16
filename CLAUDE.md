@@ -1,25 +1,20 @@
 # LocalMind — CLAUDE.md
 
 ## What This Is
-Personal AI agent. Single user (Meet), no auth needed. Runs 24/7, learns about its owner over time. Local LLM inference, cloud-persistent memory, tabbed dashboard.
+Personal AI agent. Single user (Meet), no auth needed. Runs 24/7, learns about its owner over time. Local LLM inference, cloud-persistent memory, tabbed dashboard with external tool connectors.
 
 ## Stack
-- **Framework**: Next.js 14+ App Router, TypeScript strict
-- **AI**: Vercel AI SDK (`ai` package) + Ollama provider (`ollama-ai-provider`)
-- **LLM**: Ollama localhost:11434 — Qwen 2.5 7B (chat), nomic-embed-text (embeddings)
+- **Framework**: Next.js 16 App Router, TypeScript strict
+- **AI**: Vercel AI SDK v6 (`ai` + `@ai-sdk/react` + `@ai-sdk/openai`) — Ollama via OpenAI-compat `/v1`
+- **LLM**: Ollama localhost:11434 — qwen3:8b (chat), nomic-embed-text (embeddings)
 - **Database**: Neon Postgres with pgvector — single DB for everything
 - **ORM**: Drizzle ORM + drizzle-kit
-- **Styling**: Tailwind CSS + shadcn/ui
+- **Styling**: Tailwind CSS + shadcn/ui — Precision Dark Amber theme
 - **State**: Zustand (global) + React hooks (local)
-- **Voice**: Browser Web Speech API for sprint 1 (Whisper.cpp + Piper week 2)
+- **Voice**: Browser Web Speech API
 - **Validation**: Zod everywhere
-
-## What We Are NOT Building in Sprint 1
-- No auth (single user, localhost only)
-- No MCP tool connections (Gmail, Calendar, etc. — week 2)
-- No Arduino/ambient sensing
-- No messaging integrations (WhatsApp, Telegram — week 2)
-- No Docker
+- **Graph viz**: @xyflow/react (React Flow)
+- **Connectors**: googleapis + google-auth-library (Gmail + Calendar OAuth)
 
 ## Commands
 - `pnpm install`
@@ -33,86 +28,82 @@ Personal AI agent. Single user (Meet), no auth needed. Runs 24/7, learns about i
 
 ## Project Structure
 ```
-localmind/
-├── CLAUDE.md                     # This file — Claude Code reads first
-├── .claude/rules/                # Modular rules (auto-loaded)
-├── .env.local                    # Secrets (gitignored)
-├── .env.example                  # Template for .env.local
-├── docs/                         # Architecture docs (@imported)
-├── scripts/                      # Error learning system
-├── src/
-│   ├── db/
-│   │   ├── schema.ts             # Drizzle schema (ALL tables)
-│   │   ├── index.ts              # Neon + Drizzle client
-│   │   └── migrations/           # drizzle-kit output
-│   ├── agent/
-│   │   ├── ollama.ts             # Ollama client via AI SDK
-│   │   ├── prompt-builder.ts     # system + profile + memory + user → prompt
-│   │   └── extract.ts            # Entity/relationship extraction
-│   ├── memory/
-│   │   ├── episodic.ts           # L1: conversation logs
-│   │   ├── semantic.ts           # L2: pgvector similarity search
-│   │   ├── entity.ts             # L3: entities + relationships
-│   │   ├── profile.ts            # L4: user profile summary
-│   │   └── index.ts              # Unified memory API
-│   ├── planner/
-│   │   ├── tasks.ts              # Task CRUD
-│   │   └── ai-planner.ts         # AI daily plans
-│   ├── vault/
-│   │   ├── indexer.ts            # File metadata → Postgres
-│   │   └── organizer.ts          # YYYY/MM/DD structure
-│   ├── frontend/
-│   │   ├── app/                  # Next.js App Router pages
-│   │   │   ├── layout.tsx        # Root layout + tab navigation
-│   │   │   ├── page.tsx          # Dashboard home / redirect to chat
-│   │   │   ├── chat/
-│   │   │   │   └── page.tsx      # Chat tab
-│   │   │   ├── memory/
-│   │   │   │   └── page.tsx      # Memory viewer tab
-│   │   │   ├── planner/
-│   │   │   │   └── page.tsx      # Tasks/Kanban tab
-│   │   │   ├── files/
-│   │   │   │   └── page.tsx      # File vault tab
-│   │   │   ├── voice/
-│   │   │   │   └── page.tsx      # Voice tab
-│   │   │   └── api/
-│   │   │       ├── chat/
-│   │   │       │   └── route.ts  # Streaming chat endpoint (AI SDK)
-│   │   │       ├── memory/
-│   │   │       │   └── route.ts  # Memory search + profile
-│   │   │       ├── tasks/
-│   │   │       │   └── route.ts  # Task CRUD
-│   │   │       └── files/
-│   │   │           └── route.ts  # File upload + list
-│   │   ├── components/           # Shared React components
-│   │   │   ├── chat/
-│   │   │   │   ├── message-list.tsx
-│   │   │   │   ├── message-bubble.tsx
-│   │   │   │   └── chat-input.tsx
-│   │   │   ├── planner/
-│   │   │   │   ├── task-card.tsx
-│   │   │   │   └── kanban-board.tsx
-│   │   │   ├── memory/
-│   │   │   │   ├── profile-card.tsx
-│   │   │   │   └── entity-list.tsx
-│   │   │   ├── layout/
-│   │   │   │   ├── sidebar.tsx
-│   │   │   │   └── tab-nav.tsx
-│   │   │   └── ui/               # shadcn/ui components
-│   │   └── lib/
-│   │       ├── stores/           # Zustand stores
-│   │       └── utils.ts          # Client helpers (cn, formatDate, etc.)
-│   └── shared/
-│       ├── types.ts              # Shared TypeScript types
-│       ├── constants.ts          # App constants
-│       └── schemas.ts            # Shared Zod schemas
-├── vault/                        # Local file storage (gitignored)
-├── drizzle.config.ts
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── package.json
+src/
+├── app/                         # Next.js App Router pages + API routes
+│   ├── layout.tsx               # Root layout — sidebar, TabNav, MobileNav
+│   ├── chat/page.tsx            # Chat tab (useChat v6, sessionId ref)
+│   ├── memory/page.tsx          # Memory tab (Profile · Entities · Graph · Search · Recent)
+│   ├── planner/page.tsx         # Kanban + NL task input + AI daily plan
+│   ├── files/page.tsx           # File vault
+│   ├── voice/page.tsx           # Push-to-talk (Web Speech API)
+│   ├── settings/page.tsx        # Connections (Gmail, Notion, Calendar) + About
+│   └── api/
+│       ├── chat/route.ts        # Streaming via streamText() + recall/remember
+│       ├── memory/route.ts      # Profile, entities, search, recent, decay-stats
+│       ├── memory/graph/route.ts # React Flow graph payload (hot-cached)
+│       ├── tasks/route.ts       # Task CRUD
+│       ├── files/route.ts       # Upload + list
+│       ├── health/route.ts      # Ollama health check
+│       └── connectors/
+│           ├── google/auth/route.ts     # → Google OAuth consent URL
+│           ├── google/callback/route.ts # ← stores tokens, redirect /settings
+│           └── status/route.ts          # GET all connector statuses, DELETE disconnect
+├── agent/
+│   ├── ollama.ts                # chatModel + extractionModel via @ai-sdk/openai → Ollama /v1
+│   ├── prompt-builder.ts        # Assembles system prompt from MemoryContext
+│   └── extract.ts               # generateObject → ExtractionSchema (entities + relationships)
+├── memory/
+│   ├── episodic.ts              # L1: logMessage, createSession, getRecentHistoryAllSessions
+│   ├── semantic.ts              # L2: embedAndStore, searchSimilar (pgvector cosine)
+│   ├── entity.ts                # L3: upsertEntity (vector dedup), upsertRelationship (versioned)
+│   ├── profile.ts               # L4: buildGraphSnapshot → rebuildProfile (hot-cached)
+│   ├── decay.ts                 # Intelligent decay: computeDecayScore, reinforceEntity, runDecayCycle
+│   ├── hot.ts                   # In-process TTL cache (hot memory layer, sub-ms)
+│   └── index.ts                 # recall() + remember() unified API
+├── connectors/
+│   └── google-auth.ts           # OAuth2 lifecycle: getAuthUrl, exchangeCode, saveTokens,
+│                                #   loadTokens, getAuthenticatedClient, disconnectGoogle
+├── planner/
+│   ├── tasks.ts                 # Task CRUD
+│   └── ai-planner.ts            # generateDailyPlan, parseNaturalLanguageTask
+├── vault/
+│   ├── indexer.ts               # File metadata → Postgres
+│   └── organizer.ts             # YYYY/MM/DD structure
+├── frontend/
+│   └── components/
+│       ├── chat/                # MessageList, MessageBubble, ChatInput (AI SDK v6)
+│       ├── memory/              # ProfileCard, EntityList, GraphView (React Flow)
+│       ├── planner/             # TaskCard, KanbanBoard
+│       ├── layout/              # TabNav, MobileNav, OllamaStatus
+│       └── ui/                  # shadcn/ui + Skeleton
+└── shared/
+    ├── types.ts                 # MemoryContext, RecentTurn, EntityWithRelationships
+    ├── constants.ts             # OLLAMA_BASE_URL, EMBEDDING_MODEL, PROFILE_REBUILD_INTERVAL
+    └── schemas.ts               # Shared Zod schemas
 ```
+
+## Database Tables (11 total)
+| Table | Layer | Purpose |
+|-------|-------|---------|
+| `conversations` | L1 Episodic | Append-only message log |
+| `sessions` | L1 | Session metadata + summaries |
+| `embeddings` | L2 Semantic | pgvector 768-dim chunks |
+| `entities` | L3 Graph | Named entities with decay score |
+| `relationships` | L3 Graph | Edges with version chain + decay |
+| `atomic_facts` | L3b | Granular facts with version chain + decay |
+| `profile` | L4 | ~400-token user summary |
+| `tasks` | Planner | Kanban tasks |
+| `vault_files` | Files | File metadata |
+| `settings` | Config | KV store (OAuth tokens under `connector:<provider>:tokens`) |
+| `connectors` | Config | Connector status + lastSyncAt |
+
+## Connector Architecture
+- **Strategy**: Direct SDK approach — no cloud middleman, tokens stored locally
+- **Google OAuth flow**: `/api/connectors/google/auth` → Google consent → `/api/connectors/google/callback` → stored in `settings` table
+- **Tokens key**: `connector:google:tokens` in settings table (includes access_token, refresh_token, expiry_date)
+- **Connector status**: `connectors` table — isActive, lastSyncAt, syncStatus, connectedAt
+- **Future**: Notion via `@notionhq/notion-mcp-server` + `@ai-sdk/mcp` (stdio transport, createMCPClient)
+- **Future**: AI SDK tool use — pass tools to streamText() for active tool calling during chat
 
 ## Code Rules
 - TypeScript strict — no `any`, no untyped `as` casts
@@ -122,28 +113,41 @@ localmind/
 - All dates: ISO 8601 → `timestamp with time zone` in Postgres
 - `@/` path alias for `src/`
 - Drizzle queries only — raw SQL only for pgvector similarity ops
+- NEVER import `ollama-ai-provider` — use `@ai-sdk/openai` pointing to Ollama `/v1`
 
 ## Critical Rules
-- NEVER hardcode DATABASE_URL — .env.local only
+- NEVER hardcode DATABASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET — .env.local only
 - ALWAYS null-check Ollama responses — undefined on timeout
 - ALWAYS use parameterized Drizzle queries — never string interpolation
 - ALWAYS handle Ollama offline: show "AI starting up..." + auto-retry
-- ALWAYS stream chat responses via Vercel AI SDK `streamText()`
+- ALWAYS stream chat responses via Vercel AI SDK `streamText()` → `toUIMessageStreamResponse()`
 - Memory pipeline is POST-RESPONSE, ASYNC — never block the user
+- OAuth tokens must NEVER be logged or returned in API responses
 
-## AI SDK Usage Pattern
+## AI SDK v6 Pattern (current)
 ```typescript
-import { streamText } from "ai";
-import { ollama } from "ollama-ai-provider";
-
+// Server: api/chat/route.ts
+import { streamText, convertToModelMessages } from "ai";
+import type { UIMessage } from "ai";
 const result = streamText({
-  model: ollama("qwen2.5:7b"),
-  system: profilePrompt + memoryContext,
-  messages: conversationHistory,
+  model: chatModel,  // createOpenAI({ baseURL: OLLAMA_BASE_URL+'/v1', apiKey:'ollama' })("qwen3:8b")
+  system: systemPrompt,
+  messages: convertToModelMessages(messages as UIMessage[]),
+  temperature: 0.7,
+  onFinish: async ({ text }) => { await remember(sessionId, userText, text); }
 });
-return result.toDataStreamResponse();
+return result.toUIMessageStreamResponse();
+
+// Client: app/chat/page.tsx
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+const { messages, sendMessage, status, stop } = useChat({
+  transport: new DefaultChatTransport({
+    api: "/api/chat",
+    body: () => ({ sessionId: sessionIdRef.current }),  // function! not object
+  }),
+});
 ```
-Client side: use `useChat()` hook from `ai/react` for streaming UI.
 
 ## Memory Architecture
 @docs/memory-architecture.md

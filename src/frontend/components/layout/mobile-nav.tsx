@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, MessageSquare, Brain, CheckSquare, FolderOpen, Mic } from "lucide-react";
+import { Menu, X, MessageSquare, Brain, CheckSquare, FolderOpen, Mic, Mail } from "lucide-react";
 
 const tabs = [
   { href: "/chat",    label: "Chat",    icon: MessageSquare, num: "01" },
@@ -11,6 +11,7 @@ const tabs = [
   { href: "/planner", label: "Planner", icon: CheckSquare,   num: "03" },
   { href: "/files",   label: "Vault",   icon: FolderOpen,    num: "04" },
   { href: "/voice",   label: "Voice",   icon: Mic,           num: "05" },
+  { href: "/email",   label: "Email",   icon: Mail,          num: "06" },
 ];
 
 export function MobileNav() {

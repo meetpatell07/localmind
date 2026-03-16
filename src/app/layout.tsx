@@ -58,8 +58,10 @@ export default function RootLayout({
             </div>
           </div>
 
-          {/* Nav */}
-          <TabNav />
+          {/* Nav — flex-1 so Settings floats to bottom */}
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <TabNav />
+          </div>
 
           {/* Bottom — Ollama status + user */}
           <div

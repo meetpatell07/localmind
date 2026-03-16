@@ -116,7 +116,30 @@ export const atomicFacts = pgTable("atomic_facts", {
   index("fact_predicate_idx").on(t.predicate),
 ]);
 
-// ── L4: USER PROFILE ────────────────────────
+// ── USER IDENTITY ────────────────────────────
+// Single-row table for the owner's personal info.
+// Used to personalise the AI system prompt and pre-fill task/email context.
+
+export const userProfile = pgTable("user_profile", {
+  id: serial("id").primaryKey(),
+  // Identity
+  displayName: varchar("display_name", { length: 200 }),
+  email:       varchar("email",        { length: 255 }),
+  phone:       varchar("phone",        { length: 50 }),
+  address:     text("address"),
+  // Social / professional links
+  linkedin:    varchar("linkedin",     { length: 500 }),
+  portfolioWeb: varchar("portfolio_web", { length: 500 }),
+  instagram:   varchar("instagram",   { length: 200 }),
+  xHandle:     varchar("x_handle",    { length: 200 }),  // Twitter/X @handle
+  facebook:    varchar("facebook",    { length: 500 }),
+  // Timestamps
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── L4: AI MEMORY PROFILE ────────────────────
+// AI-generated summary rebuilt from entities/relationships every 50 interactions.
+// Separate from userProfile — this is what the AI knows, not who the user is.
 
 export const profile = pgTable("profile", {
   id: serial("id").primaryKey(),
@@ -179,3 +202,22 @@ export const settings = pgTable("settings", {
   value: jsonb("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ── CONNECTORS ───────────────────────────────
+// Tracks which external service integrations are connected.
+// OAuth tokens are stored separately in the settings table under
+// "connector:<provider>:tokens" to keep credentials isolated.
+
+export const connectors = pgTable("connectors", {
+  id: serial("id").primaryKey(),
+  provider: varchar("provider", { length: 50 }).notNull().unique(), // "google", "notion"
+  isActive: boolean("is_active").default(false).notNull(),
+  scopes: jsonb("scopes").$type<string[]>().default([]),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  syncStatus: varchar("sync_status", { length: 20 }).default("idle"), // idle | syncing | error
+  errorMessage: text("error_message"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("connector_provider_idx").on(t.provider),
+]);
