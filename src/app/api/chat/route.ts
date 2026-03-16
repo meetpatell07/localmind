@@ -4,14 +4,16 @@ import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recall, remember, createSession } from "@/memory";
 import { z } from "zod";
 
+const MessageSchema = z
+  .object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string(),
+  })
+  .passthrough(); // AI SDK sends extra fields like id, createdAt
+
 const RequestSchema = z.object({
-  messages: z.array(
-    z.object({
-      role: z.enum(["user", "assistant", "system"]),
-      content: z.string(),
-    })
-  ),
-  sessionId: z.string().uuid().optional(),
+  messages: z.array(MessageSchema),
+  sessionId: z.string().uuid().nullish(),
 });
 
 export async function POST(req: Request): Promise<Response> {
