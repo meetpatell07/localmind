@@ -2,6 +2,7 @@ import {
   pgTable, text, timestamp, uuid, integer, real,
   jsonb, boolean, index, serial, varchar,
 } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 // ── L1: EPISODIC MEMORY ─────────────────────
 
@@ -47,9 +48,14 @@ export const entities = pgTable("entities", {
   mentionCount: integer("mention_count").default(1),
   firstSeen: timestamp("first_seen", { withTimezone: true }).defaultNow().notNull(),
   lastSeen: timestamp("last_seen", { withTimezone: true }).defaultNow().notNull(),
+  // ── Intelligent decay ────────────────────────────────────────────────────
+  // Starts at 1.0, decays exponentially based on type-specific half-life.
+  // Refreshed toward 1.0 each time the entity is re-mentioned in conversation.
+  decayScore: real("decay_score").default(1.0).notNull(),
 }, (t) => [
   index("entity_name_idx").on(t.name),
   index("entity_type_idx").on(t.type),
+  index("entity_decay_idx").on(t.decayScore),
 ]);
 
 export const relationships = pgTable("relationships", {
@@ -62,9 +68,52 @@ export const relationships = pgTable("relationships", {
   sourceConversationId: uuid("source_conversation_id").references(() => conversations.id),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+
+  // ── Version / mutation tracking ─────────────────────────────────────────
+  // When a fact changes (e.g. "deadline moved to Monday"), the old edge gets:
+  //   isActive=false, validUntil=now(), supersededById=<new edge id>
+  // The new edge gets factVersion = old.factVersion + 1.
+  // This preserves full history while the graph query only reads isActive=true.
+  factVersion:    integer("fact_version").default(1).notNull(),
+  validFrom:      timestamp("valid_from",  { withTimezone: true }).defaultNow().notNull(),
+  validUntil:     timestamp("valid_until", { withTimezone: true }),
+  supersededById: uuid("superseded_by_id").references((): AnyPgColumn => relationships.id),
+  decayScore:     real("decay_score").default(1.0).notNull(),
 }, (t) => [
   index("rel_subject_idx").on(t.subjectId),
   index("rel_predicate_idx").on(t.predicate),
+  index("rel_active_idx").on(t.isActive),
+  index("rel_version_idx").on(t.factVersion),
+]);
+
+// ── L3b: ATOMIC FACTS ───────────────────────
+// Granular single-sentence facts extracted from conversations/documents.
+// Each fact is independently embedded and versioned.
+// Example: "The project deadline is Friday" → entity: Project, pred: deadline, val: Friday
+
+export const atomicFacts = pgTable("atomic_facts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  // The entity this fact is primarily about
+  entityId: uuid("entity_id").references(() => entities.id, { onDelete: "cascade" }).notNull(),
+  // Human-readable fact sentence, also stored as an embedding chunk
+  rawFact: text("raw_fact").notNull(),
+  predicate: varchar("predicate", { length: 100 }),
+  objectValue: text("object_value"),
+  confidence: real("confidence").default(0.8),
+  // Active state — false when superseded
+  isActive: boolean("is_active").default(true),
+  // Version chain: supersededById points to the newer fact that replaced this one
+  factVersion:    integer("fact_version").default(1).notNull(),
+  validFrom:      timestamp("valid_from",  { withTimezone: true }).defaultNow().notNull(),
+  validUntil:     timestamp("valid_until", { withTimezone: true }),
+  supersededById: uuid("superseded_by_id").references((): AnyPgColumn => atomicFacts.id),
+  sourceConversationId: uuid("source_conversation_id").references(() => conversations.id),
+  decayScore:     real("decay_score").default(1.0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("fact_entity_idx").on(t.entityId),
+  index("fact_active_idx").on(t.isActive),
+  index("fact_predicate_idx").on(t.predicate),
 ]);
 
 // ── L4: USER PROFILE ────────────────────────

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { ProfileCard } from "@/frontend/components/memory/profile-card";
 import { EntityList } from "@/frontend/components/memory/entity-list";
+import { GraphView } from "@/frontend/components/memory/graph-view";
 import { Search, MessageSquare, Clock } from "lucide-react";
 
 interface Entity {
@@ -35,24 +36,28 @@ export default function MemoryPage() {
   const [searching, setSearching] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"profile" | "entities" | "search" | "recent">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "entities" | "search" | "recent" | "graph">("profile");
+  const [decayStats, setDecayStats] = useState<{ total: number; active: number; fading: number; archived: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, entitiesRes, recentRes] = await Promise.all([
+      const [profileRes, entitiesRes, recentRes, decayRes] = await Promise.all([
         fetch("/api/memory?type=profile"),
         fetch("/api/memory?type=entities"),
         fetch("/api/memory?type=recent"),
+        fetch("/api/memory?type=decay-stats"),
       ]);
-      const [profileData, entitiesData, recentData] = await Promise.all([
+      const [profileData, entitiesData, recentData, decayData] = await Promise.all([
         profileRes.json() as Promise<{ profile: string | null }>,
         entitiesRes.json() as Promise<{ entities: Entity[] }>,
         recentRes.json() as Promise<{ conversations: Conversation[] }>,
+        decayRes.json() as Promise<{ total: number; active: number; fading: number; archived: number }>,
       ]);
       setProfile(profileData.profile);
       setEntities(entitiesData.entities ?? []);
       setConversations(recentData.conversations ?? []);
+      setDecayStats(decayData);
     } catch {
       // ignore
     } finally {
@@ -89,8 +94,9 @@ export default function MemoryPage() {
   const tabs = [
     { key: "profile"  as const, label: "Profile",  num: "01" },
     { key: "entities" as const, label: "Entities", num: "02", count: entities.length },
-    { key: "search"   as const, label: "Search",   num: "03" },
-    { key: "recent"   as const, label: "Recent",   num: "04", count: conversations.length },
+    { key: "graph"    as const, label: "Graph",    num: "03" },
+    { key: "search"   as const, label: "Search",   num: "04" },
+    { key: "recent"   as const, label: "Recent",   num: "05", count: conversations.length },
   ];
 
   return (
@@ -139,11 +145,65 @@ export default function MemoryPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Graph tab: full bleed, no padding, no scroll */}
+      {activeTab === "graph" && (
+        <div className="flex-1 overflow-hidden">
+          <GraphView />
+        </div>
+      )}
+
+      {/* Content (scrollable — all non-graph tabs) */}
+      {activeTab !== "graph" && (
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
         {activeTab === "profile" && (
-          <ProfileCard profile={profile} onRebuild={handleRebuild} rebuilding={rebuilding} />
+          <>
+            <ProfileCard profile={profile} onRebuild={handleRebuild} rebuilding={rebuilding} />
+            {decayStats && (
+              <div
+                className="rounded-sm px-4 py-3 space-y-2"
+                style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] tracking-widest uppercase opacity-40">Intelligent Decay</span>
+                  <button
+                    onClick={async () => {
+                      await fetch("/api/memory?action=run-decay", { method: "POST" });
+                      await load();
+                    }}
+                    className="font-mono text-[9px] opacity-30 hover:opacity-60 transition-opacity"
+                    style={{ color: "var(--amber)" }}
+                  >
+                    run cycle →
+                  </button>
+                </div>
+                <div className="flex gap-4 font-mono text-[11px]">
+                  <span style={{ color: "#4ade80" }}>
+                    <span className="text-[9px] opacity-40 mr-1">sharp</span>{decayStats.active}
+                  </span>
+                  <span style={{ color: "#f59e0b" }}>
+                    <span className="text-[9px] opacity-40 mr-1">fading</span>{decayStats.fading}
+                  </span>
+                  <span style={{ color: "#ef4444" }}>
+                    <span className="text-[9px] opacity-40 mr-1">archived</span>{decayStats.archived}
+                  </span>
+                  <span className="opacity-25">
+                    <span className="text-[9px] mr-1">total</span>{decayStats.total}
+                  </span>
+                </div>
+                {/* Visual bar */}
+                <div className="flex h-1 rounded-full overflow-hidden gap-px" style={{ background: "var(--line)" }}>
+                  {decayStats.total > 0 && (
+                    <>
+                      <div className="h-full" style={{ width: `${(decayStats.active / decayStats.total) * 100}%`, background: "#4ade80" }} />
+                      <div className="h-full" style={{ width: `${(decayStats.fading / decayStats.total) * 100}%`, background: "#f59e0b" }} />
+                      <div className="h-full" style={{ width: `${(decayStats.archived / decayStats.total) * 100}%`, background: "#ef4444" }} />
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {activeTab === "entities" && (
@@ -238,6 +298,7 @@ export default function MemoryPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

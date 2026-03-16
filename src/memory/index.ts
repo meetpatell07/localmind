@@ -3,7 +3,13 @@ import { embedAndStore, searchSimilar } from "./semantic";
 import { processExtractedEntities, getEntityContext } from "./entity";
 import { getProfile, maybeRebuildProfile } from "./profile";
 import { extractEntitiesFromConversation } from "@/agent/extract";
+import { runDecayCycle } from "./decay";
 import type { MemoryContext, RecentTurn } from "@/shared/types";
+// Re-export ExtractionResult type for callers
+export type { ExtractionResult } from "@/agent/extract";
+
+/** Run decay cycle every 25 interactions — cheap math, no LLM calls. */
+const DECAY_CYCLE_INTERVAL = 25;
 
 let globalInteractionCount = 0;
 
@@ -96,6 +102,11 @@ export async function remember(
 
   // L4: Maybe rebuild profile
   await maybeRebuildProfile(globalInteractionCount);
+
+  // Decay: recompute scores every 25 interactions (fire-and-forget)
+  if (globalInteractionCount % DECAY_CYCLE_INTERVAL === 0) {
+    runDecayCycle().catch(() => {});
+  }
 }
 
 /**

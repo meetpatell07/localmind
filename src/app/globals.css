@@ -1,9 +1,9 @@
+/* ── Fonts: Satoshi (headings) + General Sans (body) ── */
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,900&f[]=general-sans@400,500,600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* ── Fonts: Satoshi (headings) + General Sans (body) ── */
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,900&f[]=general-sans@400,500,600&display=swap');
 
 @layer base {
   :root {

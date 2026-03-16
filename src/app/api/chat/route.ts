@@ -1,12 +1,9 @@
-import { streamText, convertToModelMessages, DefaultChatTransport } from "ai";
+import { streamText, convertToModelMessages } from "ai";
 import type { UIMessage } from "ai";
 import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recall, remember, createSession } from "@/memory";
 import { z } from "zod";
-
-// DefaultChatTransport is just used for the type reference; actual shape validated by Zod
-void DefaultChatTransport;
 
 const RequestSchema = z.object({
   messages: z.array(z.object({

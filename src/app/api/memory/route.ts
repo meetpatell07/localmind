@@ -3,6 +3,7 @@ import { entities, relationships, conversations } from "@/db/schema";
 import { getProfile, rebuildProfile } from "@/memory/profile";
 import { searchSimilar } from "@/memory/semantic";
 import { summarizeSession, createSession } from "@/memory/episodic";
+import { getDecayStats, runDecayCycle } from "@/memory/decay";
 import { eq, and, desc, ilike } from "drizzle-orm";
 
 // GET /api/memory?type=profile|entities|search&q=...
@@ -70,6 +71,11 @@ export async function GET(req: Request): Promise<Response> {
     return Response.json({ conversations: rows });
   }
 
+  if (type === "decay-stats") {
+    const stats = await getDecayStats();
+    return Response.json(stats);
+  }
+
   if (type === "entity-search") {
     const q = searchParams.get("q") ?? "";
     const rows = await db
@@ -87,6 +93,11 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action");
+
+  if (action === "run-decay") {
+    runDecayCycle().catch(() => {});
+    return Response.json({ queued: true });
+  }
 
   if (action === "rebuild-profile") {
     try {

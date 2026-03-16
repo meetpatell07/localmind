@@ -41,7 +41,6 @@ export default function ChatPage() {
         if (d.sessionId) sessionIdRef.current = d.sessionId;
       })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function checkOllama() {

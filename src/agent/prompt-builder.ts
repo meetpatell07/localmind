@@ -71,15 +71,4 @@ export function buildSystemPrompt(ctx: MemoryContext): string {
   return parts.join("\n");
 }
 
-export function buildExtractionPrompt(conversation: string): string {
-  return `Extract entities and relationships from this conversation. Return ONLY valid JSON matching this schema:
-{
-  "entities": [{"name": "string", "type": "person|place|project|technology|concept|event|other", "attributes": {}}],
-  "relationships": [{"subject": "entity name", "predicate": "verb/relation", "object": "entity name or value", "confidence": 0.8}]
-}
-
-Conversation:
-${conversation}
-
-JSON:`;
-}
+// Extraction prompt is now owned by src/agent/extract.ts (uses generateObject).
