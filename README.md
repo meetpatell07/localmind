@@ -138,6 +138,54 @@ ollama serve
 
 ---
 
+## Telegram Bot (optional)
+
+Connect a Telegram bot so you can chat with LocalMind from anywhere on your phone.
+
+### Create the bot
+
+1. Open Telegram and message **@BotFather**
+2. Send `/newbot`, follow the prompts, copy the **token**
+3. Add to `.env.local`:
+
+```env
+TELEGRAM_BOT_TOKEN=123456789:ABCDEFGabcdefg...
+TELEGRAM_WEBHOOK_SECRET=some-random-secret-string
+```
+
+### Expose your local server (dev only)
+
+Telegram needs a public HTTPS URL. Use [ngrok](https://ngrok.com):
+
+```bash
+ngrok http 3000
+# Copy the https://xxxx.ngrok-free.app URL
+```
+
+### Register the webhook
+
+```bash
+# With your ngrok URL:
+curl "http://localhost:3000/api/telegram/setup?url=https://xxxx.ngrok-free.app"
+
+# Or just visit that URL in your browser
+```
+
+You should see `"ok": true` in the response. Now message your bot on Telegram — it's live.
+
+### Commands in the bot
+
+| Command | Action |
+|---|---|
+| `/start` | Welcome + overview |
+| `/memory` | Show what the AI knows about you |
+| `/clear` | Reset conversation history |
+| `/help` | Show all commands |
+
+Or just talk naturally — the bot has the same tools as the web chat (memory, tasks, email/calendar if connected).
+
+---
+
 ## Commands
 
 ```bash
