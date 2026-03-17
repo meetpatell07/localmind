@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { MessageList } from "@/frontend/components/chat/message-list";
-import { ChatInput } from "@/frontend/components/chat/chat-input";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { MessageList } from "@/components/chat/message-list";
+import { ChatInput } from "@/components/chat/chat-input";
+import { AlertCircleIcon, RefreshIcon } from "hugeicons-react";
 
 export default function ChatPage() {
-  // Use a ref so DefaultChatTransport always reads the current sessionId,
-  // even though the transport object is only constructed once.
   const sessionIdRef = useRef<string | null>(null);
   const [ollamaOnline, setOllamaOnline] = useState(true);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -17,7 +15,6 @@ export default function ChatPage() {
   const { messages, sendMessage, status, stop, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      // body as a function: evaluated on every request, picks up current sessionId
       body: () => ({ sessionId: sessionIdRef.current }),
     }),
     onFinish() {
@@ -29,7 +26,6 @@ export default function ChatPage() {
     },
   });
 
-  // Create session + health check on mount
   useEffect(() => {
     fetch("/api/health")
       .then((r) => setOllamaOnline(r.ok))
@@ -40,7 +36,7 @@ export default function ChatPage() {
       .then((d: { sessionId?: string }) => {
         if (d.sessionId) sessionIdRef.current = d.sessionId;
       })
-      .catch(() => { });
+      .catch(() => {});
   }, []);
 
   async function checkOllama() {
@@ -53,7 +49,6 @@ export default function ChatPage() {
     }
   }
 
-  // Summarize session on unmount
   useEffect(() => {
     return () => {
       if (retryRef.current) clearTimeout(retryRef.current);
@@ -64,7 +59,7 @@ export default function ChatPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId: sid }),
           keepalive: true,
-        }).catch(() => { });
+        }).catch(() => {});
       }
     };
   }, [messages.length]);
@@ -74,29 +69,26 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full">
       {(!ollamaOnline || error) && (
-        <div
-          className="flex items-center gap-3 px-6 py-2.5 shrink-0"
-          style={{
-            background: "rgba(248,113,113,0.05)",
-            borderBottom: "1px solid rgba(248,113,113,0.15)",
-          }}
-        >
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" style={{ color: "rgba(248,113,113,0.7)" }} />
-          <span className="font-mono text-[11px]" style={{ color: "rgba(248,113,113,0.7)" }}>
+        <div className="flex items-center gap-3 px-6 py-2.5 shrink-0 bg-destructive/5 border-b border-destructive/15">
+          <AlertCircleIcon className="h-3.5 w-3.5 shrink-0 text-destructive" />
+          <span className="text-sm text-destructive">
             Ollama is starting up — responses will resume shortly
           </span>
           <button
-            className="ml-auto flex items-center gap-1.5 font-mono text-[10px] opacity-50 hover:opacity-80"
-            style={{ color: "rgba(248,113,113,0.7)" }}
+            className="ml-auto flex items-center gap-1.5 text-sm text-destructive/70 hover:text-destructive transition-colors"
             onClick={checkOllama}
           >
-            <RefreshCw className="h-3 w-3" />
+            <RefreshIcon className="h-3 w-3" />
             retry
           </button>
         </div>
       )}
 
-      <MessageList messages={messages} isStreaming={isStreaming} onSendMessage={sendMessage} />
+      <MessageList
+        messages={messages}
+        isStreaming={isStreaming}
+        onSendMessage={sendMessage}
+      />
 
       <ChatInput
         onSendMessage={sendMessage}

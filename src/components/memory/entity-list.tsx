@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Network, ChevronDown, ChevronRight } from "lucide-react";
+import { NeuralNetworkIcon, ArrowDown01Icon, ArrowRight01Icon } from "hugeicons-react";
 
 interface Relationship {
   predicate: string;
@@ -64,12 +64,12 @@ export function EntityList({ entities }: EntityListProps) {
         style={{ background: "var(--surface-raised)", borderBottom: "1px solid var(--line)" }}
       >
         <div className="flex items-center gap-2.5">
-          <Network className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-          <span className="font-mono text-[11px] tracking-widest uppercase opacity-60">
+          <NeuralNetworkIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+          <span className="text-sm tracking-widest uppercase opacity-60">
             Entities
           </span>
           <span
-            className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm"
+            className="text-sm px-1.5 py-0.5 rounded-sm"
             style={{ background: "var(--amber-dim)", color: "var(--amber)" }}
           >
             {entities.length}
@@ -79,7 +79,7 @@ export function EntityList({ entities }: EntityListProps) {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="filter..."
-          className="bg-transparent font-mono text-[11px] outline-none placeholder:opacity-20 text-right w-24"
+          className="bg-transparent text-sm outline-none placeholder:opacity-20 text-right w-24"
           style={{ color: "hsl(210 18% 70%)" }}
         />
       </div>
@@ -88,7 +88,7 @@ export function EntityList({ entities }: EntityListProps) {
       <div style={{ background: "var(--navy)" }}>
         {filtered.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="font-mono text-[11px] opacity-25">
+            <p className="text-sm opacity-25">
               {filter ? "no matches" : "no entities yet — start chatting"}
             </p>
           </div>
@@ -96,7 +96,7 @@ export function EntityList({ entities }: EntityListProps) {
           <div>
             {/* Column headers */}
             <div
-              className="grid px-4 py-2 font-mono text-[9px] tracking-widest uppercase"
+              className="grid px-4 py-2 text-sm tracking-widest uppercase"
               style={{
                 gridTemplateColumns: "1fr 80px 50px",
                 color: "hsl(215 12% 40%)",
@@ -123,18 +123,18 @@ export function EntityList({ entities }: EntityListProps) {
                     <div className="flex items-center gap-2 min-w-0">
                       {entity.relationships.length > 0
                         ? isOpen
-                          ? <ChevronDown className="h-3 w-3 shrink-0 opacity-30" />
-                          : <ChevronRight className="h-3 w-3 shrink-0 opacity-30" />
+                          ? <ArrowDown01Icon className="h-3 w-3 shrink-0 opacity-30" />
+                          : <ArrowRight01Icon className="h-3 w-3 shrink-0 opacity-30" />
                         : <span className="w-3 shrink-0" />
                       }
                       <span
-                        className="font-mono text-[12px] truncate"
+                        className="text-sm truncate"
                         style={{ color: "hsl(210 18% 85%)" }}
                       >
                         {entity.name}
                       </span>
                       <span
-                        className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm shrink-0"
+                        className="text-sm px-1.5 py-0.5 rounded-sm shrink-0"
                         style={{
                           background: `${typeColor.replace("0.7", "0.1")}`,
                           color: typeColor,
@@ -145,12 +145,12 @@ export function EntityList({ entities }: EntityListProps) {
                       </span>
                     </div>
                     <span
-                      className="font-mono text-[10px] text-right self-center opacity-30"
+                      className="text-sm text-right self-center opacity-30"
                     >
                       {new Date(entity.lastSeen).toLocaleDateString("en", { month: "short", day: "numeric" })}
                     </span>
                     <span
-                      className="font-mono text-[11px] text-right self-center"
+                      className="text-sm text-right self-center"
                       style={{ color: "var(--amber)", opacity: 0.7 }}
                     >
                       {entity.mentionCount ?? 1}
@@ -164,13 +164,13 @@ export function EntityList({ entities }: EntityListProps) {
                       style={{ background: "rgba(255,255,255,0.01)", borderTop: "1px solid var(--line)" }}
                     >
                       {entity.relationships.map((rel, i) => (
-                        <div key={i} className="flex items-center gap-2 font-mono text-[11px]">
+                        <div key={i} className="flex items-center gap-2 text-sm">
                           <span className="opacity-25">↳</span>
                           <span style={{ color: "hsl(215 12% 50%)" }}>{rel.predicate}</span>
                           <span className="opacity-20">·</span>
                           <span style={{ color: "hsl(210 18% 75%)" }}>{rel.objectValue}</span>
                           <span
-                            className="ml-auto opacity-20 text-[9px]"
+                            className="ml-auto opacity-20 text-sm"
                           >
                             {Math.round((rel.confidence ?? 0.8) * 100)}%
                           </span>

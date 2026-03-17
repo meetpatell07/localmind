@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ProfileCard } from "@/frontend/components/memory/profile-card";
-import { EntityList } from "@/frontend/components/memory/entity-list";
-import { GraphView } from "@/frontend/components/memory/graph-view";
-import { Search, MessageSquare, Clock } from "lucide-react";
+import { ProfileCard } from "@/components/memory/profile-card";
+import { EntityList } from "@/components/memory/entity-list";
+import { GraphView } from "@/components/memory/graph-view";
+import { Search01Icon, Message01Icon, Clock01Icon } from "hugeicons-react";
 
 interface Entity {
   id: string;
@@ -108,11 +108,11 @@ export default function MemoryPage() {
             <h1 className="font-display italic text-2xl leading-none" style={{ color: "var(--amber)" }}>
               Memory
             </h1>
-            <p className="font-mono text-[10px] opacity-25 mt-1">
+            <p className="text-sm opacity-25 mt-1">
               L1 episodic · L2 semantic · L3 entity graph · L4 profile
             </p>
           </div>
-          {loading && <span className="font-mono text-[10px] opacity-30 animate-pulse mb-1">loading...</span>}
+          {loading && <span className="text-sm opacity-30 animate-pulse mb-1">loading...</span>}
         </div>
 
         <div className="flex gap-0">
@@ -120,18 +120,18 @@ export default function MemoryPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className="flex items-center gap-2 px-4 py-2.5 font-mono text-[11px] transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all"
               style={
                 activeTab === tab.key
                   ? { color: "var(--amber)", borderBottom: "2px solid var(--amber)", marginBottom: "-1px" }
                   : { color: "hsl(215 12% 45%)", borderBottom: "2px solid transparent", marginBottom: "-1px" }
               }
             >
-              <span className="opacity-30 text-[9px]">{tab.num}</span>
+              <span className="opacity-30 text-sm">{tab.num}</span>
               {tab.label}
               {"count" in tab && tab.count != null && tab.count > 0 && (
                 <span
-                  className="text-[9px] px-1 py-0.5 rounded-sm"
+                  className="text-sm px-1 py-0.5 rounded-sm"
                   style={{
                     background: activeTab === tab.key ? "var(--amber-dim)" : "rgba(255,255,255,0.04)",
                     color: activeTab === tab.key ? "var(--amber)" : "hsl(215 12% 45%)",
@@ -165,30 +165,30 @@ export default function MemoryPage() {
                 style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] tracking-widest uppercase opacity-40">Intelligent Decay</span>
+                  <span className="text-sm tracking-widest uppercase opacity-40">Intelligent Decay</span>
                   <button
                     onClick={async () => {
                       await fetch("/api/memory?action=run-decay", { method: "POST" });
                       await load();
                     }}
-                    className="font-mono text-[9px] opacity-30 hover:opacity-60 transition-opacity"
+                    className="text-sm opacity-30 hover:opacity-60 transition-opacity"
                     style={{ color: "var(--amber)" }}
                   >
                     run cycle →
                   </button>
                 </div>
-                <div className="flex gap-4 font-mono text-[11px]">
+                <div className="flex gap-4 text-sm">
                   <span style={{ color: "#4ade80" }}>
-                    <span className="text-[9px] opacity-40 mr-1">sharp</span>{decayStats.active}
+                    <span className="text-sm opacity-40 mr-1">sharp</span>{decayStats.active}
                   </span>
                   <span style={{ color: "#f59e0b" }}>
-                    <span className="text-[9px] opacity-40 mr-1">fading</span>{decayStats.fading}
+                    <span className="text-sm opacity-40 mr-1">fading</span>{decayStats.fading}
                   </span>
                   <span style={{ color: "#ef4444" }}>
-                    <span className="text-[9px] opacity-40 mr-1">archived</span>{decayStats.archived}
+                    <span className="text-sm opacity-40 mr-1">archived</span>{decayStats.archived}
                   </span>
                   <span className="opacity-25">
-                    <span className="text-[9px] mr-1">total</span>{decayStats.total}
+                    <span className="text-sm mr-1">total</span>{decayStats.total}
                   </span>
                 </div>
                 {/* Visual bar */}
@@ -223,18 +223,18 @@ export default function MemoryPage() {
                   transition: "border-color 0.15s",
                 }}
               >
-                <Search className="h-4 w-4 shrink-0 opacity-30" />
+                <Search01Icon className="h-4 w-4 shrink-0 opacity-30" />
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="semantic memory search..."
-                  className="flex-1 bg-transparent font-mono text-sm outline-none placeholder:opacity-20"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-20"
                   style={{ color: "hsl(210 18% 85%)" }}
                 />
                 <button
                   type="submit"
                   disabled={searching || !searchQuery.trim()}
-                  className="font-mono text-[10px] disabled:opacity-20"
+                  className="text-sm disabled:opacity-20"
                   style={{ color: "var(--amber)" }}
                 >
                   {searching ? "searching..." : "search →"}
@@ -247,10 +247,10 @@ export default function MemoryPage() {
                 {searchResults.map((result, i) => (
                   <div key={i} className="px-4 py-3 rounded-sm" style={{ background: "var(--navy)", border: "1px solid var(--line)" }}>
                     <div className="flex items-center gap-2 mb-2">
-                      <MessageSquare className="h-3 w-3 opacity-30" />
-                      <span className="font-mono text-[9px] opacity-30">result {i + 1}</span>
+                      <Message01Icon className="h-3 w-3 opacity-30" />
+                      <span className="text-sm opacity-30">result {i + 1}</span>
                     </div>
-                    <p className="font-mono text-[12px] leading-relaxed" style={{ color: "hsl(210 18% 70%)" }}>
+                    <p className="text-sm leading-relaxed" style={{ color: "hsl(210 18% 70%)" }}>
                       {result}
                     </p>
                   </div>
@@ -259,7 +259,7 @@ export default function MemoryPage() {
             )}
 
             {searchResults.length === 0 && searchQuery && !searching && (
-              <p className="font-mono text-[11px] opacity-25 text-center py-8">no results</p>
+              <p className="text-sm opacity-25 text-center py-8">no results</p>
             )}
           </div>
         )}
@@ -270,25 +270,25 @@ export default function MemoryPage() {
               className="flex items-center gap-2.5 px-4 py-3"
               style={{ background: "var(--surface-raised)", borderBottom: "1px solid var(--line)" }}
             >
-              <Clock className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-              <span className="font-mono text-[11px] tracking-widest uppercase opacity-60">Recent Conversations</span>
+              <Clock01Icon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+              <span className="text-sm tracking-widest uppercase opacity-60">Recent Conversations</span>
             </div>
             <div style={{ background: "var(--navy)" }}>
               {conversations.length === 0 ? (
-                <p className="font-mono text-[11px] opacity-25 text-center py-8">no conversations yet</p>
+                <p className="text-sm opacity-25 text-center py-8">no conversations yet</p>
               ) : (
                 conversations.map((msg, i) => (
                   <div key={i} className="px-4 py-3 flex gap-3" style={{ borderBottom: "1px solid var(--line)" }}>
                     <span
-                      className="font-mono text-[9px] shrink-0 pt-0.5 w-14 text-right opacity-50"
+                      className="text-sm shrink-0 pt-0.5 w-14 text-right opacity-50"
                       style={{ color: msg.role === "user" ? "var(--amber)" : "hsl(215 12% 55%)" }}
                     >
                       {msg.role}
                     </span>
-                    <p className="font-mono text-[12px] leading-relaxed flex-1 min-w-0" style={{ color: "hsl(210 18% 72%)" }}>
+                    <p className="text-sm leading-relaxed flex-1 min-w-0" style={{ color: "hsl(210 18% 72%)" }}>
                       {msg.content.length > 200 ? msg.content.slice(0, 200) + "…" : msg.content}
                     </p>
-                    <span className="font-mono text-[9px] shrink-0 opacity-20 self-start">
+                    <span className="text-sm shrink-0 opacity-20 self-start">
                       {new Date(msg.createdAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>

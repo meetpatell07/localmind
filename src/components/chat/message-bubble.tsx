@@ -3,13 +3,12 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { UIMessage } from "ai";
-import { Loader2, Check, Database, Brain, ListTodo, Search, User, GitBranch } from "lucide-react";
+import { Loading03Icon, CheckmarkCircle01Icon, Database01Icon, Brain02Icon, CheckListIcon, Search01Icon, UserIcon, GitBranchIcon } from "hugeicons-react";
+import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
   message: UIMessage;
 }
-
-// ── Tool call display ─────────────────────────────────────────────────────────
 
 type ToolState = "partial-call" | "call" | "result";
 
@@ -24,16 +23,15 @@ interface ToolInvocationPart {
 }
 
 const TOOL_META: Record<string, { icon: React.ElementType; verb: string }> = {
-  update_profile:        { icon: User,       verb: "Updating profile"        },
-  save_memory:           { icon: Brain,      verb: "Saving to memory"        },
-  recall_memories:       { icon: Search,     verb: "Searching memory"        },
-  query_knowledge_graph: { icon: GitBranch,  verb: "Querying knowledge graph" },
-  create_task:           { icon: ListTodo,   verb: "Creating task"           },
-  get_my_profile:        { icon: Database,   verb: "Reading profile"         },
-  // Email tools
-  list_emails:           { icon: Database,   verb: "Fetching inbox"          },
-  search_emails:         { icon: Search,     verb: "Searching emails"        },
-  get_email:             { icon: Database,   verb: "Reading email"           },
+  update_profile:        { icon: UserIcon,         verb: "Updating profile"        },
+  save_memory:           { icon: Brain02Icon,      verb: "Saving to memory"        },
+  recall_memories:       { icon: Search01Icon,     verb: "Searching memory"        },
+  query_knowledge_graph: { icon: GitBranchIcon,    verb: "Querying knowledge graph" },
+  create_task:           { icon: CheckListIcon,    verb: "Creating task"           },
+  get_my_profile:        { icon: Database01Icon,   verb: "Reading profile"         },
+  list_emails:           { icon: Database01Icon,   verb: "Fetching inbox"          },
+  search_emails:         { icon: Search01Icon,     verb: "Searching emails"        },
+  get_email:             { icon: Database01Icon,   verb: "Reading email"           },
 };
 
 function toolResultSummary(name: string, result: unknown): string {
@@ -80,7 +78,7 @@ function toolResultSummary(name: string, result: unknown): string {
 
 function ToolCallBadge({ part }: { part: ToolInvocationPart }) {
   const { toolName, state, result } = part.toolInvocation;
-  const meta = TOOL_META[toolName] ?? { icon: Database, verb: toolName };
+  const meta = TOOL_META[toolName] ?? { icon: Database01Icon, verb: toolName };
   const Icon = meta.icon;
   const isRunning = state === "call" || state === "partial-call";
   const isDone = state === "result";
@@ -90,29 +88,17 @@ function ToolCallBadge({ part }: { part: ToolInvocationPart }) {
 
   return (
     <div
-      className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm my-1 w-fit font-mono text-[10px]"
-      style={{
-        background: isRunning
-          ? "rgba(240,160,21,0.06)"
-          : isSuccess
-          ? "rgba(74,222,128,0.06)"
-          : "rgba(248,113,113,0.06)",
-        border: `1px solid ${isRunning
-          ? "rgba(240,160,21,0.2)"
-          : isSuccess
-          ? "rgba(74,222,128,0.15)"
-          : "rgba(248,113,113,0.15)"}`,
-        color: isRunning
-          ? "var(--amber)"
-          : isSuccess
-          ? "#4ade80"
-          : "#f87171",
-      }}
+      className={cn(
+        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg my-1 w-fit text-sm border",
+        isRunning && "bg-amber-50 border-amber-200 text-amber-700",
+        isDone && isSuccess && "bg-green-50 border-green-200 text-green-700",
+        isDone && !isSuccess && "bg-red-50 border-red-200 text-red-700",
+      )}
     >
       {isRunning ? (
-        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+        <Loading03Icon className="h-3 w-3 animate-spin shrink-0" />
       ) : (
-        <Check className="h-3 w-3 shrink-0" />
+        <CheckmarkCircle01Icon className="h-3 w-3 shrink-0" />
       )}
       <Icon className="h-3 w-3 shrink-0 opacity-70" />
       <span>
@@ -124,32 +110,16 @@ function ToolCallBadge({ part }: { part: ToolInvocationPart }) {
   );
 }
 
-// ── Markdown text block ────────────────────────────────────────────────────────
-
 function TextBlock({ text }: { text: string }) {
   if (!text.trim()) return null;
   return (
-    <div
-      className="px-4 py-3 rounded-sm text-[13px] leading-relaxed"
-      style={{
-        background: "var(--surface-raised)",
-        border: "1px solid var(--line)",
-        color: "hsl(210 18% 78%)",
-      }}
-    >
+    <div className="px-4 py-3 rounded-lg text-sm leading-relaxed border border-border bg-white text-foreground">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        className="prose-localmind"
+        className="prose prose-sm max-w-none prose-p:my-1 prose-headings:text-foreground prose-code:text-foreground"
         components={{
           pre: ({ children }) => (
-            <pre
-              className="overflow-x-auto rounded-sm p-3 text-xs my-3 font-mono"
-              style={{
-                background: "var(--navy)",
-                border: "1px solid var(--line)",
-                color: "hsl(210 18% 70%)",
-              }}
-            >
+            <pre className="overflow-x-auto rounded-lg p-3 text-sm my-3 bg-gray-50 border border-border text-foreground">
               {children}
             </pre>
           ),
@@ -157,14 +127,7 @@ function TextBlock({ text }: { text: string }) {
             className?.includes("language-") ? (
               <code className={className}>{children}</code>
             ) : (
-              <code
-                className="rounded-sm px-1.5 py-0.5 text-xs font-mono"
-                style={{
-                  background: "var(--navy)",
-                  border: "1px solid var(--line)",
-                  color: "hsl(48 80% 70%)",
-                }}
-              >
+              <code className="rounded-md px-1.5 py-0.5 text-sm bg-gray-100 border border-border text-foreground">
                 {children}
               </code>
             ),
@@ -176,12 +139,9 @@ function TextBlock({ text }: { text: string }) {
   );
 }
 
-// ── Message bubble ────────────────────────────────────────────────────────────
-
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
-  // ── User bubble ─────────────────────────────────────────────────────────────
   if (isUser) {
     const text = message.parts?.length
       ? message.parts
@@ -193,41 +153,29 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     if (!text) return null;
     return (
       <div className="flex gap-3 w-full flex-row-reverse">
-        <span
-          className="font-mono text-[9px] shrink-0 mt-1 w-8 text-right leading-none"
-          style={{ color: "var(--amber)", paddingTop: "3px" }}
-        >
-          you
-        </span>
-        <div
-          className="max-w-[80%] px-4 py-3 rounded-sm"
-          style={{
-            background: "var(--amber-dim)",
-            border: "1px solid rgba(240,160,21,0.2)",
-            color: "var(--amber)",
-          }}
-        >
-          <p className="whitespace-pre-wrap font-mono text-[12px]">{text}</p>
+        <div className="size-7 rounded-full bg-foreground flex items-center justify-center text-sm font-medium text-background shrink-0">
+          M
+        </div>
+        <div className="max-w-[80%] px-4 py-3 rounded-lg bg-foreground text-background">
+          <p className="whitespace-pre-wrap text-sm">{text}</p>
         </div>
       </div>
     );
   }
 
-  // ── Assistant bubble — render parts in document order ───────────────────────
-  // This ensures pre-tool narration text appears BEFORE the tool badge,
-  // and post-tool response text appears AFTER it. Streaming-safe.
   const parts = message.parts ?? [];
   const hasContent = parts.some(
     (p) => (p.type === "text" && (p as { text: string }).text?.trim()) || p.type === "tool-invocation"
   );
 
-  // Fallback: legacy messages without parts
   if (!hasContent) {
     const text = (message as unknown as { content: string }).content ?? "";
     if (!text) return null;
     return (
       <div className="flex gap-3 w-full flex-row">
-        <span className="font-mono text-[9px] shrink-0 mt-1 w-8 text-right leading-none" style={{ color: "hsl(215 12% 35%)", paddingTop: "3px" }}>ai</span>
+        <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-muted-foreground shrink-0">
+          AI
+        </div>
         <div className="flex flex-col gap-0.5 max-w-[80%]">
           <TextBlock text={text} />
         </div>
@@ -237,14 +185,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div className="flex gap-3 w-full flex-row">
-      <span
-        className="font-mono text-[9px] shrink-0 mt-1 w-8 text-right leading-none"
-        style={{ color: "hsl(215 12% 35%)", paddingTop: "3px" }}
-      >
-        ai
-      </span>
-
-      {/* Parts rendered in document order — narration → tool badge → response */}
+      <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-muted-foreground shrink-0">
+        AI
+      </div>
       <div className="flex flex-col gap-0.5 max-w-[80%]">
         {parts.map((part, i) => {
           if (part.type === "text") {
