@@ -373,6 +373,26 @@ Call this when:
   }),
 };
 
+// ── MIME email builder (draft / reply) ────────────────────────────────────────
+function buildMimeMessage({
+  to, subject, body, inReplyTo, references,
+}: {
+  to: string; subject: string; body: string;
+  inReplyTo?: string; references?: string;
+}): string {
+  const headers = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+  ];
+  if (inReplyTo)  headers.push(`In-Reply-To: ${inReplyTo}`);
+  if (references) headers.push(`References: ${references}`);
+  const raw = [...headers, "", body].join("\r\n");
+  return Buffer.from(raw).toString("base64")
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 // ── Email tools ────────────────────────────────────────────────────────────────
 
 export const emailTools = {
@@ -485,6 +505,183 @@ export const emailTools = {
 
   // Shares the same create_task logic + shadow extraction
   create_task: coreTools.create_task,
+
+  // ── Calendar availability ────────────────────────────────────────────────────
+  check_calendar_availability: tool({
+    description: `
+Check Google Calendar for upcoming events and free time windows.
+
+Call this when:
+- Drafting a reply that involves scheduling, meetings, or deadlines
+- The user asks "am I free on X?", "what's on my calendar?", "when can I meet?"
+- You need to reference real availability before suggesting times in an email reply
+
+Returns a list of events for the next N days and derived free windows (9am–6pm).
+`.trim(),
+    inputSchema: z.object({
+      days:     z.number().min(1).max(14).default(7).describe("How many days ahead to check (default 7)"),
+      timezone: z.string().default("UTC").describe("IANA timezone for display (e.g. 'America/New_York')"),
+    }),
+    execute: async (args: { days: number; timezone: string }) => {
+      const auth = await getAuthenticatedClient();
+      if (!auth) return { error: "Google not connected. Connect in Settings → Connections." };
+
+      try {
+        const calendar = google.calendar({ version: "v3", auth });
+
+        const now      = new Date();
+        const rangeEnd = new Date(now.getTime() + args.days * 86_400_000);
+
+        const eventsRes = await calendar.events.list({
+          calendarId:   "primary",
+          timeMin:      now.toISOString(),
+          timeMax:      rangeEnd.toISOString(),
+          singleEvents: true,
+          orderBy:      "startTime",
+          maxResults:   30,
+        });
+
+        const events = (eventsRes.data.items ?? []).map((ev) => ({
+          title:    ev.summary ?? "(no title)",
+          start:    ev.start?.dateTime ?? ev.start?.date ?? "",
+          end:      ev.end?.dateTime   ?? ev.end?.date   ?? "",
+          allDay:   !ev.start?.dateTime,
+          location: ev.location ?? null,
+        }));
+
+        // Derive simple free-window summary per day (9am–6pm, non-all-day events)
+        const busyByDay = new Map<string, Array<{ start: Date; end: Date }>>();
+        for (const ev of events) {
+          if (ev.allDay || !ev.start || !ev.end) continue;
+          const day = new Date(ev.start).toDateString();
+          const list = busyByDay.get(day) ?? [];
+          list.push({ start: new Date(ev.start), end: new Date(ev.end) });
+          busyByDay.set(day, list);
+        }
+
+        const freeWindows: string[] = [];
+        for (let i = 0; i < args.days; i++) {
+          const day = new Date(now);
+          day.setDate(now.getDate() + i);
+          day.setHours(9, 0, 0, 0);
+          const dayLabel = day.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" });
+          const busySlots = busyByDay.get(day.toDateString()) ?? [];
+
+          if (busySlots.length === 0) {
+            freeWindows.push(`${dayLabel}: fully free 9am–6pm`);
+          } else {
+            // Compute gaps between busy slots within 9am–6pm
+            const sorted = [...busySlots].sort((a, b) => a.start.getTime() - b.start.getTime());
+            const gaps: string[] = [];
+            let cursor = new Date(day);
+
+            for (const slot of sorted) {
+              const slotStart = slot.start < day ? day : slot.start;
+              const gap = slotStart.getTime() - cursor.getTime();
+              if (gap >= 30 * 60 * 1000) {
+                gaps.push(`${cursor.toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}–${slotStart.toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}`);
+              }
+              if (slot.end > cursor) cursor = slot.end;
+            }
+
+            const eod = new Date(day);
+            eod.setHours(18, 0, 0, 0);
+            if (eod.getTime() - cursor.getTime() >= 30 * 60 * 1000) {
+              gaps.push(`${cursor.toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}–6:00 PM`);
+            }
+
+            freeWindows.push(gaps.length > 0
+              ? `${dayLabel}: free ${gaps.join(", ")}`
+              : `${dayLabel}: fully booked`
+            );
+          }
+        }
+
+        return {
+          events,
+          freeWindows,
+          range: `Next ${args.days} days`,
+          timezone: args.timezone,
+        };
+      } catch (err) {
+        return { error: `Calendar error: ${String(err)}` };
+      }
+    },
+  }),
+
+  // ── Create Gmail draft reply ─────────────────────────────────────────────────
+  create_draft_reply: tool({
+    description: `
+Create a Gmail draft reply to a specific email. The draft is saved in Gmail Drafts
+so the user can review and send it themselves.
+
+Call this AFTER you have:
+1. Read the email content (via get_email)
+2. Checked availability if scheduling is involved (via check_calendar_availability)
+3. Composed the full reply body
+
+The tool saves the draft and returns a preview so the user can confirm.
+`.trim(),
+    inputSchema: z.object({
+      emailId:   z.string().describe("Gmail message ID of the email to reply to"),
+      replyBody: z.string().min(10).describe("The complete reply text — write the full email body here"),
+    }),
+    execute: async (args: { emailId: string; replyBody: string }) => {
+      const auth = await getAuthenticatedClient();
+      if (!auth) return { error: "Gmail not connected." };
+
+      try {
+        const gmail = google.gmail({ version: "v1", auth });
+
+        // Fetch original email headers
+        const original = await gmail.users.messages.get({
+          userId: "me",
+          id:     args.emailId,
+          format: "metadata",
+          metadataHeaders: ["From", "To", "Subject", "Message-ID", "References"],
+        });
+
+        const h         = original.data.payload?.headers ?? [];
+        const from      = h.find((x) => x.name?.toLowerCase() === "from")?.value      ?? "";
+        const subject   = h.find((x) => x.name?.toLowerCase() === "subject")?.value   ?? "";
+        const messageId = h.find((x) => x.name?.toLowerCase() === "message-id")?.value ?? "";
+        const refs      = h.find((x) => x.name?.toLowerCase() === "references")?.value ?? "";
+        const threadId  = original.data.threadId ?? undefined;
+
+        const replySubject = subject.toLowerCase().startsWith("re:")
+          ? subject
+          : `Re: ${subject}`;
+
+        const raw = buildMimeMessage({
+          to:         from,
+          subject:    replySubject,
+          body:       args.replyBody,
+          inReplyTo:  messageId,
+          references: [refs, messageId].filter(Boolean).join(" "),
+        });
+
+        const draft = await gmail.users.drafts.create({
+          userId: "me",
+          requestBody: {
+            message: { raw, threadId },
+          },
+        });
+
+        const preview = args.replyBody.slice(0, 300) + (args.replyBody.length > 300 ? "…" : "");
+
+        return {
+          success:  true,
+          draftId:  draft.data.id,
+          to:       from,
+          subject:  replySubject,
+          preview,
+          message:  `Draft saved to Gmail. Open Gmail to review and send it.`,
+        };
+      } catch (err) {
+        return { success: false, error: `Could not create draft: ${String(err)}` };
+      }
+    },
+  }),
 };
 
 // ── Full tool set ──────────────────────────────────────────────────────────────
