@@ -30,7 +30,7 @@ Personal AI agent running entirely on your machine. Persistent memory across con
 ## 1. Clone and install
 
 ```bash
-git clone <repo>
+git clone https://github.com/your-username/localmind.git
 cd localmind
 pnpm install
 ```
@@ -100,7 +100,29 @@ Then run the SQL from step 3 in the Neon SQL Editor to add the pgvector column a
 
 ---
 
-## 6. Start the dev server
+## 6. Connect Gmail + Google Calendar (optional)
+
+Required only if you want the Email tab (AI-powered inbox, draft replies, calendar checks).
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Create a new project
+3. Enable **Gmail API** and **Google Calendar API** (APIs & Services → Library)
+4. Go to **Credentials** → **Create Credentials** → **OAuth 2.0 Client ID**
+   - Application type: **Web Application**
+   - Authorized redirect URIs: `http://localhost:3000/api/connectors/google/callback`
+5. Copy the **Client ID** and **Client Secret** into `.env.local`:
+
+```env
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-secret
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+6. In the running app, go to **Settings → Connections** and click **Connect Google**
+
+---
+
+## 7. Start the dev server
 
 ```bash
 pnpm dev
@@ -108,16 +130,22 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The amber status dot in the top-right shows Ollama's live status. If it's grey, start Ollama with `ollama serve`.
+The amber status dot in the top-right shows Ollama's live status. If it's grey, start Ollama first:
+
+```bash
+ollama serve
+```
 
 ---
 
 ## Commands
 
 ```bash
-pnpm dev          # Start development server
+pnpm dev          # Start development server (localhost:3000)
 pnpm build        # Production build
+pnpm start        # Start production server
 pnpm lint:fix     # ESLint + Prettier
+pnpm test         # Run Vitest tests
 pnpm db:generate  # Generate migration from schema changes
 pnpm db:migrate   # Apply migrations to Neon
 pnpm db:studio    # Open Drizzle Studio (visual DB browser)
