@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Mic01Icon, MicOff01Icon, VolumeHighIcon, VolumeOffIcon } from "hugeicons-react";
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
@@ -160,8 +161,8 @@ export default function VoicePage() {
   if (!supported) {
     return (
       <div className="flex flex-col h-full items-center justify-center gap-4">
-        <MicOff className="h-8 w-8 opacity-20" />
-        <p className="font-mono text-[11px] opacity-30 text-center max-w-xs">
+        <MicOff01Icon className="h-8 w-8 opacity-20" />
+        <p className="text-sm opacity-30 text-center max-w-xs">
           Web Speech API not supported in this browser.<br />
           Use Chrome or Edge for voice features.
         </p>
@@ -178,20 +179,22 @@ export default function VoicePage() {
             <h1 className="font-display italic text-2xl leading-none" style={{ color: "var(--amber)" }}>
               Voice
             </h1>
-            <p className="font-mono text-[10px] opacity-25 mt-1">
+            <p className="text-sm opacity-25 mt-1">
               push to talk · Web Speech API
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setTtsEnabled((v) => !v)}
-            className="flex items-center gap-1.5 font-mono text-[10px] opacity-40 hover:opacity-70 transition-opacity"
+            className="opacity-40 hover:opacity-70 transition-opacity"
           >
             {ttsEnabled
-              ? <Volume2 className="h-3.5 w-3.5" />
-              : <VolumeX className="h-3.5 w-3.5" />
+              ? <VolumeHighIcon className="h-3.5 w-3.5" />
+              : <VolumeOffIcon className="h-3.5 w-3.5" />
             }
             {ttsEnabled ? "voice on" : "voice off"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -199,8 +202,8 @@ export default function VoicePage() {
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
         {turns.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 opacity-30">
-            <Mic className="h-8 w-8" />
-            <p className="font-mono text-[11px]">hold the button and speak</p>
+            <Mic01Icon className="h-8 w-8" />
+            <p className="text-sm">hold the button and speak</p>
           </div>
         )}
         {turns.map((turn, i) => (
@@ -209,10 +212,10 @@ export default function VoicePage() {
             className={`flex gap-3 ${turn.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {turn.role === "assistant" && (
-              <span className="font-mono text-[9px] opacity-30 mt-1 shrink-0">ai</span>
+              <span className="text-sm opacity-30 mt-1 shrink-0">ai</span>
             )}
             <div
-              className="font-mono text-[12px] leading-relaxed px-3 py-2 rounded-sm max-w-[80%]"
+              className="text-sm leading-relaxed px-3 py-2 rounded-sm max-w-[80%]"
               style={{
                 background: turn.role === "user" ? "var(--amber-dim)" : "var(--surface-raised)",
                 color: turn.role === "user" ? "var(--amber)" : "hsl(210 18% 75%)",
@@ -222,15 +225,15 @@ export default function VoicePage() {
               {turn.text}
             </div>
             {turn.role === "user" && (
-              <span className="font-mono text-[9px] opacity-30 mt-1 shrink-0">you</span>
+              <span className="text-sm opacity-30 mt-1 shrink-0">you</span>
             )}
           </div>
         ))}
         {thinking && (
           <div className="flex gap-3">
-            <span className="font-mono text-[9px] opacity-30 mt-1">ai</span>
+            <span className="text-sm opacity-30 mt-1">ai</span>
             <div
-              className="font-mono text-[12px] px-3 py-2 rounded-sm"
+              className="text-sm px-3 py-2 rounded-sm"
               style={{ background: "var(--surface-raised)", border: "1px solid var(--line)", color: "hsl(215 12% 40%)" }}
             >
               <span className="animate-pulse">thinking...</span>
@@ -246,20 +249,21 @@ export default function VoicePage() {
       >
         {transcript && (
           <p
-            className="font-mono text-[12px] text-center opacity-60 max-w-sm"
+            className="text-sm text-center opacity-60 max-w-sm"
             style={{ color: "hsl(210 18% 75%)" }}
           >
             {transcript}
           </p>
         )}
-        <button
+        <Button
+          variant="ghost"
           onMouseDown={!listening ? toggleListen : undefined}
           onMouseUp={listening ? toggleListen : undefined}
           onTouchStart={!listening ? toggleListen : undefined}
           onTouchEnd={listening ? toggleListen : undefined}
           onClick={listening ? toggleListen : undefined}
           disabled={thinking}
-          className="relative flex items-center justify-center w-16 h-16 rounded-full transition-all disabled:opacity-30"
+          className="relative w-16 h-16 rounded-full transition-all disabled:opacity-30"
           style={{
             background: listening
               ? "rgba(240,160,21,0.15)"
@@ -273,11 +277,11 @@ export default function VoicePage() {
           }}
         >
           {listening
-            ? <Mic className="h-6 w-6 animate-pulse" style={{ color: "var(--amber)" }} />
-            : <Mic className="h-6 w-6 opacity-50" />
+            ? <Mic01Icon className="h-6 w-6 animate-pulse" style={{ color: "var(--amber)" }} />
+            : <Mic01Icon className="h-6 w-6 opacity-50" />
           }
-        </button>
-        <p className="font-mono text-[10px] opacity-20">
+        </Button>
+        <p className="text-sm opacity-20">
           {listening ? "listening... click to send" : "click to speak"}
         </p>
       </div>

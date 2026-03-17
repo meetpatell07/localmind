@@ -27,13 +27,13 @@ export function KanbanBoard({ tasks, onStatusChange, onDelete }: KanbanBoardProp
               className="flex items-center gap-2 px-2 py-1.5"
               style={{ borderBottom: "1px solid var(--line)" }}
             >
-              <span className="font-mono text-[9px] opacity-20">{col.num}</span>
-              <span className="font-mono text-[10px] tracking-widest uppercase opacity-50">
+              <span className="text-sm opacity-20">{col.num}</span>
+              <span className="text-sm tracking-widest uppercase opacity-50">
                 {col.label}
               </span>
               {colTasks.length > 0 && (
                 <span
-                  className="ml-auto font-mono text-[9px] px-1.5 py-0.5 rounded-sm"
+                  className="ml-auto text-sm px-1.5 py-0.5 rounded-sm"
                   style={{ background: "var(--amber-dim)", color: "var(--amber)" }}
                 >
                   {colTasks.length}
@@ -48,7 +48,7 @@ export function KanbanBoard({ tasks, onStatusChange, onDelete }: KanbanBoardProp
                   className="py-6 text-center rounded-sm"
                   style={{ border: "1px dashed var(--line)" }}
                 >
-                  <p className="font-mono text-[10px] opacity-20">empty</p>
+                  <p className="text-sm opacity-20">empty</p>
                 </div>
               ) : (
                 colTasks.map((task) => (

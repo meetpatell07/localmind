@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { UserIcon, RefreshIcon, ArrowDown01Icon, ArrowUp01Icon } from "hugeicons-react";
 
 interface ProfileCardProps {
   profile: string | null;
@@ -24,23 +25,25 @@ export function ProfileCard({ profile, onRebuild, rebuilding }: ProfileCardProps
         onClick={() => setExpanded((e) => !e)}
       >
         <div className="flex items-center gap-2.5">
-          <User className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-          <span className="font-mono text-[11px] tracking-widest uppercase opacity-60">
+          <UserIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+          <span className="text-sm tracking-widest uppercase opacity-60">
             Profile
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={(e) => { e.stopPropagation(); onRebuild(); }}
             disabled={rebuilding}
-            className="flex items-center gap-1.5 font-mono text-[10px] opacity-40 hover:opacity-80 transition-opacity disabled:opacity-20"
+            className="opacity-40 hover:opacity-80 transition-opacity disabled:opacity-20"
           >
-            <RefreshCw className={`h-3 w-3 ${rebuilding ? "animate-spin" : ""}`} />
+            <RefreshIcon className={`h-3 w-3 ${rebuilding ? "animate-spin" : ""}`} />
             {rebuilding ? "rebuilding..." : "rebuild"}
-          </button>
+          </Button>
           {expanded
-            ? <ChevronUp className="h-3.5 w-3.5 opacity-30" />
-            : <ChevronDown className="h-3.5 w-3.5 opacity-30" />
+            ? <ArrowUp01Icon className="h-3.5 w-3.5 opacity-30" />
+            : <ArrowDown01Icon className="h-3.5 w-3.5 opacity-30" />
           }
         </div>
       </div>
@@ -50,17 +53,17 @@ export function ProfileCard({ profile, onRebuild, rebuilding }: ProfileCardProps
         <div className="px-4 py-4" style={{ background: "var(--navy)" }}>
           {profile ? (
             <p
-              className="font-mono text-[12px] leading-relaxed whitespace-pre-wrap"
+              className="text-sm leading-relaxed whitespace-pre-wrap"
               style={{ color: "hsl(210 18% 70%)" }}
             >
               {profile}
             </p>
           ) : (
             <div className="py-6 text-center">
-              <p className="font-mono text-[11px] opacity-25">
+              <p className="text-sm opacity-25">
                 No profile yet — start chatting to build one.
               </p>
-              <p className="font-mono text-[10px] opacity-15 mt-1">
+              <p className="text-sm opacity-15 mt-1">
                 Profile auto-builds after every 50 interactions.
               </p>
             </div>

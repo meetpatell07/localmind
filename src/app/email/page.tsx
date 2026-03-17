@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { Send, RefreshCw, Mail, MailOpen, AlertCircle, Loader2, Plus, Reply, Calendar } from "lucide-react";
+import { SentIcon, RefreshIcon, Mail01Icon, MailOpenIcon, AlertCircleIcon, Loading03Icon, PlusSignIcon, MailReply01Icon, Calendar03Icon } from "hugeicons-react";
+import { Button } from "@/components/ui/button";
 
 interface EmailSummary {
   id: string;
@@ -78,13 +79,13 @@ function InboxPanel({
   if (!connected) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-        <AlertCircle className="h-8 w-8" style={{ color: "hsl(215 12% 35%)" }} />
-        <p className="font-mono text-[12px]" style={{ color: "hsl(210 12% 50%)" }}>
+        <AlertCircleIcon className="h-8 w-8" style={{ color: "hsl(215 12% 35%)" }} />
+        <p className="text-sm" style={{ color: "hsl(210 12% 50%)" }}>
           Gmail not connected
         </p>
         <a
           href="/settings"
-          className="font-mono text-[11px] px-3 py-1.5 rounded-sm"
+          className="text-sm px-3 py-1.5 rounded-sm"
           style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid rgba(240,160,21,0.2)" }}
         >
           Connect in Settings →
@@ -97,38 +98,40 @@ function InboxPanel({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
-        <span className="font-mono text-[11px]" style={{ color: "hsl(210 18% 60%)" }}>INBOX</span>
-        <button
+        <span className="text-sm" style={{ color: "hsl(210 18% 60%)" }}>INBOX</span>
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => void fetchEmails()}
-          className="p-1 rounded-sm transition-colors"
           style={{ color: "hsl(215 12% 40%)" }}
           disabled={loading}
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
+          <RefreshIcon className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        </Button>
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {loading && emails.length === 0 && (
           <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-4 w-4 animate-spin" style={{ color: "hsl(215 12% 35%)" }} />
+            <Loading03Icon className="h-4 w-4 animate-spin" style={{ color: "hsl(215 12% 35%)" }} />
           </div>
         )}
 
         {error && (
           <div className="px-4 py-3">
-            <p className="font-mono text-[11px]" style={{ color: "hsl(0 60% 50%)" }}>{error}</p>
+            <p className="text-sm" style={{ color: "hsl(0 60% 50%)" }}>{error}</p>
           </div>
         )}
 
         {emails.map((email) => {
           const active = selectedId === email.id;
           return (
-            <button
+            <Button
               key={email.id}
+              variant="ghost"
               onClick={() => onSelectEmail(email)}
-              className="w-full text-left px-4 py-3 transition-colors"
+              className="w-full text-left px-4 py-3 h-auto rounded-none transition-colors"
               style={{
                 background: active ? "var(--amber-dim)" : "transparent",
                 borderLeft: active ? "2px solid var(--amber)" : "2px solid transparent",
@@ -138,40 +141,40 @@ function InboxPanel({
               <div className="flex items-start gap-2">
                 <div className="pt-0.5 shrink-0">
                   {email.isUnread
-                    ? <Mail className="h-3 w-3" style={{ color: "var(--amber)" }} />
-                    : <MailOpen className="h-3 w-3" style={{ color: "hsl(215 12% 35%)" }} />
+                    ? <Mail01Icon className="h-3 w-3" style={{ color: "var(--amber)" }} />
+                    : <MailOpenIcon className="h-3 w-3" style={{ color: "hsl(215 12% 35%)" }} />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-0.5">
                     <span
-                      className="font-mono text-[11px] truncate"
+                      className="text-sm truncate"
                       style={{ color: email.isUnread ? "hsl(210 18% 80%)" : "hsl(210 12% 55%)" }}
                     >
                       {formatFrom(email.from)}
                     </span>
-                    <span className="font-mono text-[10px] shrink-0" style={{ color: "hsl(215 12% 35%)" }}>
+                    <span className="text-sm shrink-0" style={{ color: "hsl(215 12% 35%)" }}>
                       {formatDate(email.date)}
                     </span>
                   </div>
                   <p
-                    className="font-mono text-[11px] truncate mb-0.5"
+                    className="text-sm truncate mb-0.5"
                     style={{ color: active ? "var(--amber)" : "hsl(210 15% 65%)" }}
                   >
                     {email.subject || "(no subject)"}
                   </p>
-                  <p className="font-mono text-[10px] truncate opacity-60" style={{ color: "hsl(210 12% 50%)" }}>
+                  <p className="text-sm truncate opacity-60" style={{ color: "hsl(210 12% 50%)" }}>
                     {email.snippet}
                   </p>
                 </div>
               </div>
-            </button>
+            </Button>
           );
         })}
 
         {!loading && !error && emails.length === 0 && (
           <div className="flex items-center justify-center h-32">
-            <p className="font-mono text-[11px]" style={{ color: "hsl(215 12% 35%)" }}>No emails found</p>
+            <p className="text-sm" style={{ color: "hsl(215 12% 35%)" }}>No emails found</p>
           </div>
         )}
       </div>
@@ -180,27 +183,31 @@ function InboxPanel({
       <div className="px-4 py-3 shrink-0 flex flex-col gap-2" style={{ borderTop: "1px solid var(--line)" }}>
         {/* Draft reply — shown when an email is selected */}
         {selectedEmail && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() =>
               onAskAI(
                 `Draft a reply to this email. Check my calendar availability first if scheduling is involved, then write a professional reply.\n\nEmail ID: ${selectedEmail.id}\nFrom: ${selectedEmail.from}\nSubject: ${selectedEmail.subject || "(no subject)"}`
               )
             }
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-sm font-mono text-[11px] transition-colors"
+            className="w-full justify-start transition-colors"
             style={{ background: "rgba(99,102,241,0.08)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)" }}
           >
-            <Reply className="h-3 w-3 shrink-0" />
+            <MailReply01Icon className="h-3 w-3 shrink-0" />
             Draft reply with AI
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => onAskAI("What are my most important unread emails?")}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-sm font-mono text-[11px] transition-colors"
+          className="w-full justify-start transition-colors"
           style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid rgba(240,160,21,0.15)" }}
         >
-          <Plus className="h-3 w-3 shrink-0" />
+          <PlusSignIcon className="h-3 w-3 shrink-0" />
           Ask AI about inbox
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -218,7 +225,7 @@ function ToolBadge({ name, done }: { name: string; done: boolean }) {
   };
   return (
     <div
-      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm font-mono text-[10px] my-0.5 w-fit"
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm text-sm my-0.5 w-fit"
       style={{
         background: done ? "rgba(74,222,128,0.06)" : "rgba(240,160,21,0.08)",
         border: `1px solid ${done ? "rgba(74,222,128,0.15)" : "rgba(240,160,21,0.2)"}`,
@@ -227,7 +234,7 @@ function ToolBadge({ name, done }: { name: string; done: boolean }) {
     >
       {done
         ? <span className="h-2.5 w-2.5 flex items-center justify-center">✓</span>
-        : <Loader2 className="h-2.5 w-2.5 animate-spin" />
+        : <Loading03Icon className="h-2.5 w-2.5 animate-spin" />
       }
       {labels[name] ?? name}
     </div>
@@ -295,13 +302,13 @@ function ChatPanel({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
-        <p className="font-mono text-[11px]" style={{ color: "hsl(210 18% 60%)" }}>EMAIL AI</p>
+        <p className="text-sm" style={{ color: "hsl(210 18% 60%)" }}>EMAIL AI</p>
         {selectedEmail ? (
-          <p className="font-mono text-[10px] truncate opacity-50" style={{ maxWidth: "260px" }}>
+          <p className="text-sm truncate opacity-50" style={{ maxWidth: "260px" }}>
             Selected: {selectedEmail.subject || "(no subject)"}
           </p>
         ) : (
-          <p className="font-mono text-[10px] opacity-40">Ask me anything about your inbox</p>
+          <p className="text-sm opacity-40">Ask me anything about your inbox</p>
         )}
       </div>
 
@@ -309,25 +316,27 @@ function ChatPanel({
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col gap-2 pt-8 items-center">
-            <Mail className="h-8 w-8 opacity-15" style={{ color: "var(--amber)" }} />
-            <p className="font-mono text-[12px] text-center opacity-30">
+            <Mail01Icon className="h-8 w-8 opacity-15" style={{ color: "var(--amber)" }} />
+            <p className="text-sm text-center opacity-30">
               {selectedEmail ? "Ask me about the selected email" : "Ask me about your emails"}
             </p>
             <div className="flex flex-col gap-2 mt-4 w-full max-w-xs">
               {quickPrompts.map((s) => (
-                <button
+                <Button
                   key={s}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     const full = selectedEmail
                       ? `${s}\n\n[Selected email — From: ${selectedEmail.from} | Subject: ${selectedEmail.subject || "(no subject)"} | ID: ${selectedEmail.id}]`
                       : s;
                     sendMessage({ text: full });
                   }}
-                  className="text-left px-3 py-2 rounded-sm font-mono text-[11px] transition-colors"
+                  className="text-left justify-start h-auto py-2"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--line)", color: "hsl(210 12% 55%)" }}
                 >
                   {s}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -345,7 +354,7 @@ function ChatPanel({
             return (
               <div key={msg.id} className="flex justify-end">
                 <div
-                  className="max-w-[75%] px-3 py-2 rounded-sm font-mono text-[12px] leading-relaxed"
+                  className="max-w-[75%] px-3 py-2 rounded-sm text-sm leading-relaxed"
                   style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)", color: "hsl(40 80% 75%)" }}
                 >
                   {text}
@@ -374,7 +383,7 @@ function ChatPanel({
                     return (
                       <div
                         key={i}
-                        className="max-w-[85%] px-3 py-2 rounded-sm font-mono text-[12px] leading-relaxed whitespace-pre-wrap"
+                        className="max-w-[85%] px-3 py-2 rounded-sm text-sm leading-relaxed whitespace-pre-wrap"
                         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--line)", color: "hsl(210 18% 75%)" }}
                       >
                         {p.text}
@@ -394,15 +403,15 @@ function ChatPanel({
                         <div key={i} className="flex flex-col gap-1.5">
                           <ToolBadge name={toolName} done={done} />
                           <div
-                            className="rounded-sm p-3 font-mono text-[11px]"
+                            className="rounded-sm p-3 text-sm"
                             style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)" }}
                           >
                             <div className="flex items-center gap-2 mb-2">
-                              <Reply className="h-3 w-3 shrink-0" style={{ color: "#818cf8" }} />
+                              <MailReply01Icon className="h-3 w-3 shrink-0" style={{ color: "#818cf8" }} />
                               <span style={{ color: "#818cf8" }}>Draft saved to Gmail</span>
                             </div>
-                            <div className="opacity-50 text-[10px] mb-1">To: {String(result.to ?? "")}</div>
-                            <div className="opacity-50 text-[10px] mb-2">Subject: {String(result.subject ?? "")}</div>
+                            <div className="opacity-50 text-sm mb-1">To: {String(result.to ?? "")}</div>
+                            <div className="opacity-50 text-sm mb-2">Subject: {String(result.subject ?? "")}</div>
                             <p className="leading-relaxed opacity-70" style={{ color: "hsl(210 18% 75%)" }}>
                               {String(result.preview ?? "")}
                             </p>
@@ -419,15 +428,15 @@ function ChatPanel({
                           <ToolBadge name={toolName} done={done} />
                           {windows.length > 0 && (
                             <div
-                              className="rounded-sm p-3 font-mono text-[11px]"
+                              className="rounded-sm p-3 text-sm"
                               style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}
                             >
                               <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="h-3 w-3 shrink-0" style={{ color: "#22d3ee" }} />
+                                <Calendar03Icon className="h-3 w-3 shrink-0" style={{ color: "#22d3ee" }} />
                                 <span style={{ color: "#22d3ee" }}>Availability — {String(result.range ?? "")}</span>
                               </div>
                               {windows.map((w, wi) => (
-                                <div key={wi} className="opacity-60 text-[10px] leading-relaxed">{w}</div>
+                                <div key={wi} className="opacity-60 text-sm leading-relaxed">{w}</div>
                               ))}
                             </div>
                           )}
@@ -448,8 +457,8 @@ function ChatPanel({
 
         {isStreaming && messages[messages.length - 1]?.role === "user" && (
           <div className="flex items-center gap-2">
-            <Loader2 className="h-3 w-3 animate-spin" style={{ color: "hsl(215 12% 40%)" }} />
-            <span className="font-mono text-[11px]" style={{ color: "hsl(215 12% 40%)" }}>thinking…</span>
+            <Loading03Icon className="h-3 w-3 animate-spin" style={{ color: "hsl(215 12% 40%)" }} />
+            <span className="text-sm" style={{ color: "hsl(215 12% 40%)" }}>thinking…</span>
           </div>
         )}
 
@@ -473,7 +482,7 @@ function ChatPanel({
           }}
           placeholder={selectedEmail ? `Ask about this email…` : "Ask about your emails…"}
           rows={1}
-          className="flex-1 resize-none rounded-sm px-3 py-2 font-mono text-[12px] focus:outline-none"
+          className="flex-1 resize-none rounded-sm px-3 py-2 text-sm focus:outline-none"
           style={{
             background: "rgba(255,255,255,0.04)",
             border: "1px solid var(--line)",
@@ -482,14 +491,16 @@ function ChatPanel({
             maxHeight: "120px",
           }}
         />
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           type="submit"
           disabled={!input.trim() || isStreaming}
-          className="shrink-0 p-2 rounded-sm transition-colors disabled:opacity-30"
+          className="shrink-0 transition-colors disabled:opacity-30"
           style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)", color: "var(--amber)" }}
         >
-          <Send className="h-3.5 w-3.5" />
-        </button>
+          <SentIcon className="h-3.5 w-3.5" />
+        </Button>
       </form>
     </div>
   );

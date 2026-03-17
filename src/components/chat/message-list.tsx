@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import type { UIMessage } from "ai";
 import { MessageBubble } from "./message-bubble";
-import { Brain, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Brain02Icon, SparklesIcon } from "hugeicons-react";
 
 interface MessageListProps {
   messages: UIMessage[];
@@ -28,36 +29,29 @@ export function MessageList({ messages, isStreaming, onSendMessage }: MessageLis
     return (
       <div className="flex flex-1 items-center justify-center px-6">
         <div className="text-center space-y-6">
-          <div
-            className="mx-auto w-12 h-12 rounded-sm flex items-center justify-center"
-            style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)" }}
-          >
-            <Brain className="h-6 w-6" style={{ color: "var(--amber)" }} />
+          <div className="mx-auto w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+            <Brain02Icon className="h-6 w-6 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-mono text-[15px]" style={{ color: "hsl(210 18% 82%)" }}>
+            <p className="text-sm font-medium text-foreground">
               Hey, Meet.
             </p>
-            <p className="font-mono text-[11px] opacity-30 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               I remember our conversations. Ask me anything.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 justify-center">
             {SUGGESTED_PROMPTS.map((prompt) => (
-              <button
+              <Button
                 key={prompt}
-                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onSendMessage({ text: prompt })}
-                className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-sm transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid var(--line)",
-                  color: "hsl(215 12% 50%)",
-                }}
+                className="text-muted-foreground hover:text-foreground"
               >
-                <Sparkles className="h-3 w-3" style={{ color: "var(--amber)", opacity: 0.6 }} />
+                <SparklesIcon className="h-3 w-3" />
                 {prompt}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -73,15 +67,11 @@ export function MessageList({ messages, isStreaming, onSendMessage }: MessageLis
         ))}
         {isStreaming && (
           <div className="flex gap-3">
-            <span className="font-mono text-[9px] opacity-20 mt-1 w-8 text-right">ai</span>
-            <div
-              className="px-4 py-3 rounded-sm"
-              style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
-            >
-              <span
-                className="font-mono text-[14px]"
-                style={{ color: "var(--amber)", opacity: 0.6 }}
-              >
+            <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-muted-foreground shrink-0">
+              AI
+            </div>
+            <div className="px-4 py-3 rounded-lg border border-border bg-white">
+              <span className="text-sm text-muted-foreground animate-pulse">
                 █
               </span>
             </div>

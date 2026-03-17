@@ -1,6 +1,7 @@
 "use client";
 
-import { Trash2, Circle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Delete02Icon, CircleIcon, CheckmarkCircle02Icon, Clock01Icon, ArrowRight01Icon } from "hugeicons-react";
 
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 export type TaskPriority = "low" | "medium" | "high";
@@ -52,23 +53,25 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
     >
       <div className="flex items-start gap-2.5">
         {/* Status toggle */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onStatusChange(task.id, STATUS_NEXT[task.status])}
           className="mt-0.5 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
           title={`Mark as ${STATUS_NEXT[task.status]}`}
         >
           {isDone
-            ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+            ? <CheckmarkCircle02Icon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
             : task.status === "in_progress"
-            ? <Clock className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-            : <Circle className="h-3.5 w-3.5" style={{ color: "hsl(215 12% 45%)" }} />
+            ? <Clock01Icon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+            : <CircleIcon className="h-3.5 w-3.5" style={{ color: "hsl(215 12% 45%)" }} />
           }
-        </button>
+        </Button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p
-            className="font-mono text-[12px] leading-snug"
+            className="text-sm leading-snug"
             style={{
               color: isDone ? "hsl(215 12% 40%)" : "hsl(210 18% 82%)",
               textDecoration: isDone ? "line-through" : "none",
@@ -77,14 +80,14 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
             {task.title}
           </p>
           {task.description && (
-            <p className="font-mono text-[10px] mt-0.5 opacity-30 truncate">
+            <p className="text-sm mt-0.5 opacity-30 truncate">
               {task.description}
             </p>
           )}
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {task.priority && (
               <span
-                className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm"
+                className="text-sm px-1.5 py-0.5 rounded-sm"
                 style={{
                   background: `${priorityColor.replace(/0\.\d+\)/, "0.1)")}`,
                   color: priorityColor,
@@ -95,15 +98,15 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
               </span>
             )}
             {task.dueDate && (
-              <span className="font-mono text-[9px] opacity-30 flex items-center gap-1">
-                <ArrowRight className="h-2.5 w-2.5" />
+              <span className="text-sm opacity-30 flex items-center gap-1">
+                <ArrowRight01Icon className="h-2.5 w-2.5" />
                 {new Date(task.dueDate).toLocaleDateString("en", { month: "short", day: "numeric" })}
               </span>
             )}
             {(task.tags ?? []).map((tag) => (
               <span
                 key={tag}
-                className="font-mono text-[9px] px-1 py-0.5 rounded-sm"
+                className="text-sm px-1 py-0.5 rounded-sm"
                 style={{ background: "rgba(255,255,255,0.04)", color: "hsl(215 12% 45%)" }}
               >
                 {tag}
@@ -113,12 +116,14 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
         </div>
 
         {/* Delete */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onDelete(task.id)}
           className="shrink-0 opacity-0 group-hover:opacity-30 hover:!opacity-70 transition-opacity"
         >
-          <Trash2 className="h-3 w-3" style={{ color: "rgba(248,113,113,0.8)" }} />
-        </button>
+          <Delete02Icon className="h-3 w-3" style={{ color: "rgba(248,113,113,0.8)" }} />
+        </Button>
       </div>
     </div>
   );

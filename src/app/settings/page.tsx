@@ -3,10 +3,13 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Mail, Calendar, FileText, CheckCircle2, Circle,
-  RefreshCw, Unlink, ExternalLink, AlertTriangle, Info,
-  User, Save, Loader2, LogOut,
-} from "lucide-react";
+  Mail01Icon, Calendar03Icon, FileAttachmentIcon, CheckmarkCircle02Icon, CircleIcon,
+  RefreshIcon, Unlink01Icon, LinkSquare02Icon, AlertDiamondIcon, InformationCircleIcon,
+  UserIcon, FloppyDiskIcon, Loading03Icon, Logout01Icon,
+} from "hugeicons-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,20 +52,12 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="font-mono text-[10px] tracking-wider uppercase opacity-40">{label}</label>
-      <input
+      <label className="text-sm tracking-wider uppercase opacity-40">{label}</label>
+      <Input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-sm font-mono text-[12px] focus:outline-none transition-colors"
-        style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid var(--line)",
-          color: "hsl(210 18% 80%)",
-        }}
-        onFocus={(e) => { e.target.style.borderColor = "rgba(240,160,21,0.4)"; }}
-        onBlur={(e) => { e.target.style.borderColor = "var(--line)"; }}
       />
     </div>
   );
@@ -124,7 +119,7 @@ function ProfileSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <Loader2 className="h-4 w-4 animate-spin" style={{ color: "hsl(215 12% 35%)" }} />
+        <Loading03Icon className="h-4 w-4 animate-spin" style={{ color: "hsl(215 12% 35%)" }} />
       </div>
     );
   }
@@ -139,8 +134,8 @@ function ProfileSection() {
         style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
       >
         <div className="flex items-center gap-2 mb-1">
-          <User className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-          <span className="font-mono text-[11px] tracking-widest uppercase opacity-40">Identity</span>
+          <UserIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+          <span className="text-sm tracking-widest uppercase opacity-40">Identity</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Full name"    value={v("displayName")} onChange={(v) => set("displayName", v)} placeholder="Meet Patel" />
@@ -155,7 +150,7 @@ function ProfileSection() {
         className="rounded-sm p-5 space-y-4"
         style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
       >
-        <span className="font-mono text-[11px] tracking-widest uppercase opacity-40">Social &amp; professional</span>
+        <span className="text-sm tracking-widest uppercase opacity-40">Social &amp; professional</span>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="LinkedIn URL"    value={v("linkedin")}     onChange={(v) => set("linkedin", v)}     placeholder="https://linkedin.com/in/..." />
           <Field label="Portfolio / Web" value={v("portfolioWeb")} onChange={(v) => set("portfolioWeb", v)} placeholder="https://yoursite.com" />
@@ -168,29 +163,31 @@ function ProfileSection() {
       {/* Save */}
       <div className="flex items-center justify-between">
         {profile.updatedAt && (
-          <span className="font-mono text-[10px] opacity-25">
+          <span className="text-sm opacity-25">
             Last saved {new Date(profile.updatedAt).toLocaleDateString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
         <div className="flex items-center gap-3 ml-auto">
           {saved && (
-            <span className="font-mono text-[11px]" style={{ color: "#4ade80" }}>
+            <span className="text-sm" style={{ color: "#4ade80" }}>
               ✓ saved
             </span>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void handleSave()}
             disabled={saving || !isDirty()}
-            className="flex items-center gap-2 px-4 py-2 rounded-sm font-mono text-[11px] transition-all disabled:opacity-30"
+            className="transition-all disabled:opacity-30"
             style={{
               background: "var(--amber-dim)",
               border: "1px solid rgba(240,160,21,0.25)",
               color: "var(--amber)",
             }}
           >
-            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+            {saving ? <Loading03Icon className="h-3 w-3 animate-spin" /> : <FloppyDiskIcon className="h-3 w-3" />}
             {saving ? "saving..." : "Save changes"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -251,26 +248,26 @@ function ConnectorCard({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[13px]" style={{ color: "hsl(210 18% 85%)" }}>{name}</span>
+              <span className="text-sm" style={{ color: "hsl(210 18% 85%)" }}>{name}</span>
               {comingSoon && (
-                <span className="font-mono text-[9px] px-1.5 py-0.5 rounded-sm" style={{ background: "rgba(255,255,255,0.04)", color: "hsl(215 12% 40%)" }}>
+                <span className="text-sm px-1.5 py-0.5 rounded-sm" style={{ background: "rgba(255,255,255,0.04)", color: "hsl(215 12% 40%)" }}>
                   soon
                 </span>
               )}
             </div>
-            <p className="font-mono text-[10px] mt-0.5" style={{ color: "hsl(215 12% 40%)" }}>{description}</p>
+            <p className="text-sm mt-0.5" style={{ color: "hsl(215 12% 40%)" }}>{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
           {connected ? (
             <>
-              <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#4ade80" }} />
-              <span className="font-mono text-[10px]" style={{ color: "#4ade80" }}>connected</span>
+              <CheckmarkCircle02Icon className="h-3.5 w-3.5" style={{ color: "#4ade80" }} />
+              <span className="text-sm" style={{ color: "#4ade80" }}>connected</span>
             </>
           ) : (
             <>
-              <Circle className="h-3 w-3 opacity-20" />
-              <span className="font-mono text-[10px] opacity-30">not connected</span>
+              <CircleIcon className="h-3 w-3 opacity-20" />
+              <span className="text-sm opacity-30">not connected</span>
             </>
           )}
         </div>
@@ -280,22 +277,22 @@ function ConnectorCard({
         <div className="rounded-sm px-3 py-2 space-y-1 relative" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--line)" }}>
           {status?.email && (
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] opacity-40">account</span>
-              <span className="font-mono text-[10px]" style={{ color: "hsl(210 18% 70%)" }}>{status.email}</span>
+              <span className="text-sm opacity-40">account</span>
+              <span className="text-sm" style={{ color: "hsl(210 18% 70%)" }}>{status.email}</span>
             </div>
           )}
           {status?.connectedAt && (
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] opacity-40">connected</span>
-              <span className="font-mono text-[10px]" style={{ color: "hsl(210 18% 70%)" }}>
+              <span className="text-sm opacity-40">connected</span>
+              <span className="text-sm" style={{ color: "hsl(210 18% 70%)" }}>
                 {new Date(status.connectedAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
           )}
           {status?.lastSyncAt && (
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] opacity-40">last sync</span>
-              <span className="font-mono text-[10px]" style={{ color: "hsl(210 18% 70%)" }}>
+              <span className="text-sm opacity-40">last sync</span>
+              <span className="text-sm" style={{ color: "hsl(210 18% 70%)" }}>
                 {new Date(status.lastSyncAt).toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
@@ -305,24 +302,26 @@ function ConnectorCard({
 
       <div className="flex items-center gap-2 relative">
         {comingSoon ? (
-          <span className="font-mono text-[10px] opacity-20">coming soon</span>
+          <span className="text-sm opacity-20">coming soon</span>
         ) : connected ? (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void handleDisconnect()}
             disabled={disconnecting}
-            className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-sm transition-all disabled:opacity-40"
+            className="transition-all disabled:opacity-40"
             style={{ border: "1px solid rgba(248,113,113,0.2)", color: "rgba(248,113,113,0.7)", background: "rgba(248,113,113,0.04)" }}
           >
-            <Unlink className="h-3 w-3" />
+            <Unlink01Icon className="h-3 w-3" />
             {disconnecting ? "disconnecting..." : "disconnect"}
-          </button>
+          </Button>
         ) : (
           <a
             href={connectHref}
-            className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-sm transition-all"
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-sm transition-all"
             style={{ border: `1px solid ${accentColor}33`, color: accentColor, background: accentColor + "0d" }}
           >
-            <ExternalLink className="h-3 w-3" />
+            <LinkSquare02Icon className="h-3 w-3" />
             connect
           </a>
         )}
@@ -340,12 +339,12 @@ function SetupGuide({ show }: { show: boolean }) {
     <div className="rounded-sm p-4 space-y-3" style={{ background: "rgba(240,160,21,0.05)", border: "1px solid rgba(240,160,21,0.15)" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Info className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-          <span className="font-mono text-[11px]" style={{ color: "var(--amber)" }}>Google OAuth setup required</span>
+          <InformationCircleIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
+          <span className="text-sm" style={{ color: "var(--amber)" }}>Google OAuth setup required</span>
         </div>
-        <button onClick={() => setOpen(false)} className="font-mono text-[10px] opacity-30 hover:opacity-60">dismiss</button>
+        <Button variant="ghost" size="xs" onClick={() => setOpen(false)} className="opacity-30 hover:opacity-60">dismiss</Button>
       </div>
-      <ol className="space-y-1.5 font-mono text-[10px]" style={{ color: "hsl(210 18% 60%)" }}>
+      <ol className="space-y-1.5 text-sm" style={{ color: "hsl(210 18% 60%)" }}>
         <li><span className="opacity-40 mr-2">1.</span>Go to <span style={{ color: "var(--amber)" }}>console.cloud.google.com</span> → New project → Enable Gmail API + Calendar API</li>
         <li><span className="opacity-40 mr-2">2.</span>Create OAuth 2.0 credentials → Web Application → add redirect URI:</li>
         <li className="ml-4 px-2 py-1 rounded-sm" style={{ background: "rgba(0,0,0,0.3)", color: "hsl(210 18% 75%)" }}>http://localhost:3000/api/connectors/google/callback</li>
@@ -386,16 +385,18 @@ function ConnectionsSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] tracking-widest uppercase" style={{ color: "hsl(215 12% 35%)" }}>
+        <span className="text-sm tracking-widest uppercase" style={{ color: "hsl(215 12% 35%)" }}>
           External services
         </span>
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={onRefresh}
-          className="flex items-center gap-1.5 font-mono text-[10px] opacity-30 hover:opacity-60 transition-opacity"
+          className="opacity-30 hover:opacity-60 transition-opacity"
         >
-          <RefreshCw className="h-3 w-3" />
+          <RefreshIcon className="h-3 w-3" />
           refresh
-        </button>
+        </Button>
       </div>
 
       <SetupGuide show={showSetupGuide} />
@@ -404,7 +405,7 @@ function ConnectionsSection({
         <ConnectorCard
           name="Google (Gmail + Calendar)"
           description="Read emails, search inbox, access calendar events"
-          icon={<Mail className="h-5 w-5" />}
+          icon={<Mail01Icon className="h-5 w-5" />}
           accentColor="#4285F4"
           status={google}
           connectHref="/api/connectors/google/auth"
@@ -413,7 +414,7 @@ function ConnectionsSection({
         <ConnectorCard
           name="Notion"
           description="Search pages, create tasks, read databases"
-          icon={<FileText className="h-5 w-5" />}
+          icon={<FileAttachmentIcon className="h-5 w-5" />}
           accentColor="#ffffff"
           status={null}
           connectHref="/settings"
@@ -422,7 +423,7 @@ function ConnectionsSection({
         <ConnectorCard
           name="Google Calendar"
           description="View and create events (included with Google)"
-          icon={<Calendar className="h-5 w-5" />}
+          icon={<Calendar03Icon className="h-5 w-5" />}
           accentColor="#0F9D58"
           status={google ? { connected: google.connected } : null}
           connectHref="/api/connectors/google/auth"
@@ -437,31 +438,33 @@ function ConnectionsSection({
           style={{ background: "rgba(248,113,113,0.04)", border: "1px solid rgba(248,113,113,0.15)" }}
         >
           <div>
-            <p className="font-mono text-[12px]" style={{ color: "rgba(248,113,113,0.8)" }}>
+            <p className="text-sm" style={{ color: "rgba(248,113,113,0.8)" }}>
               Logout from Google
             </p>
-            <p className="font-mono text-[10px] opacity-50 mt-0.5">
+            <p className="text-sm opacity-50 mt-0.5">
               Revokes access &amp; removes all tokens from the database
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void handleGoogleLogout()}
-            className="flex items-center gap-2 px-4 py-2 rounded-sm font-mono text-[11px] transition-all"
+            className="transition-all"
             style={{
               border: "1px solid rgba(248,113,113,0.3)",
               color: "rgba(248,113,113,0.9)",
               background: "rgba(248,113,113,0.06)",
             }}
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <Logout01Icon className="h-3.5 w-3.5" />
             logout
-          </button>
+          </Button>
         </div>
       )}
 
       <div className="rounded-sm p-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
-        <p className="font-mono text-[10px] tracking-widest uppercase opacity-30 mb-3">What LocalMind does with access</p>
-        <ul className="space-y-2 font-mono text-[11px]" style={{ color: "hsl(210 18% 55%)" }}>
+        <p className="text-sm tracking-widest uppercase opacity-30 mb-3">What LocalMind does with access</p>
+        <ul className="space-y-2 text-sm" style={{ color: "hsl(210 18% 55%)" }}>
           {[
             "Periodically embeds new emails/events into memory for semantic search",
             "Extracts entities (people, projects, deadlines) and builds the knowledge graph",
@@ -487,7 +490,6 @@ function SettingsContent() {
   const [connData, setConnData] = useState<ConnectorsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<"profile" | "connections" | "about">("profile");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -524,116 +526,105 @@ function SettingsContent() {
 
   const google = connData?.connectors?.google ?? null;
 
-  const sections = [
-    { key: "profile"     as const, label: "Profile",     num: "01" },
-    { key: "connections" as const, label: "Connections",  num: "02" },
-    { key: "about"       as const, label: "About",        num: "03" },
-  ];
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="px-6 pt-5 pb-0 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
+      <div className="px-6 pt-5 pb-0 shrink-0">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <h1 className="font-display italic text-2xl leading-none" style={{ color: "var(--amber)" }}>
+            <h1 className="font-display italic text-2xl leading-none text-brand">
               Settings
             </h1>
-            <p className="font-mono text-[10px] opacity-25 mt-1">profile · connectors · about</p>
+            <p className="text-sm text-muted-foreground mt-1">profile · connectors · about</p>
           </div>
-          {loading && <span className="font-mono text-[10px] opacity-30 mb-1 animate-pulse">loading...</span>}
-        </div>
-        <div className="flex gap-0">
-          {sections.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setActiveSection(s.key)}
-              className="flex items-center gap-2 px-4 py-2.5 font-mono text-[11px] transition-all"
-              style={
-                activeSection === s.key
-                  ? { color: "var(--amber)", borderBottom: "2px solid var(--amber)", marginBottom: "-1px" }
-                  : { color: "hsl(215 12% 45%)", borderBottom: "2px solid transparent", marginBottom: "-1px" }
-              }
-            >
-              <span className="opacity-30 text-[9px]">{s.num}</span>
-              {s.label}
-            </button>
-          ))}
+          {loading && <span className="text-sm text-muted-foreground mb-1 animate-pulse">loading...</span>}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-        {/* Banner */}
-        {banner && (
-          <div
-            className="flex items-center gap-3 px-4 py-3 rounded-sm"
-            style={{
-              background: banner.type === "success" ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
-              border: `1px solid ${banner.type === "success" ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
-            }}
-          >
-            {banner.type === "success"
-              ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: "#4ade80" }} />
-              : <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} />
-            }
-            <span className="font-mono text-[11px] flex-1" style={{ color: banner.type === "success" ? "#4ade80" : "#f87171" }}>
-              {banner.message}
-            </span>
-            <button onClick={() => setBanner(null)} className="font-mono text-[10px] opacity-30 hover:opacity-60 shrink-0">×</button>
-          </div>
-        )}
+      <Tabs defaultValue="profile" className="flex flex-col flex-1 overflow-hidden gap-0">
+        <div className="px-6 shrink-0">
+          <TabsList>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="connections">Connections</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+          </TabsList>
+        </div>
 
-        {activeSection === "profile" && <ProfileSection />}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {/* Banner */}
+          {banner && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-sm mb-5"
+              style={{
+                background: banner.type === "success" ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
+                border: `1px solid ${banner.type === "success" ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+              }}
+            >
+              {banner.type === "success"
+                ? <CheckmarkCircle02Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "#4ade80" }} />
+                : <AlertDiamondIcon className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} />
+              }
+              <span className="text-sm flex-1" style={{ color: banner.type === "success" ? "#4ade80" : "#f87171" }}>
+                {banner.message}
+              </span>
+              <Button variant="ghost" size="icon-xs" onClick={() => setBanner(null)} className="opacity-30 hover:opacity-60 shrink-0">×</Button>
+            </div>
+          )}
 
-        {activeSection === "connections" && (
-          <ConnectionsSection
-            google={google}
-            loading={loading}
-            onRefresh={() => void load()}
-            onDisconnect={handleDisconnect}
-            onBanner={setBanner}
-          />
-        )}
+          <TabsContent value="profile">
+            <ProfileSection />
+          </TabsContent>
 
-        {activeSection === "about" && (
-          <div className="space-y-4">
-            <div className="rounded-sm p-5 space-y-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0" style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)" }}>
-                  <span style={{ color: "var(--amber)", fontSize: "18px", fontFamily: "monospace" }}>◈</span>
-                </div>
-                <div>
-                  <p className="font-mono text-[14px]" style={{ color: "hsl(210 18% 88%)" }}>LocalMind</p>
-                  <p className="font-mono text-[10px] opacity-30">v0.1.0 · localhost</p>
-                </div>
-              </div>
-              <div className="space-y-2 font-mono text-[11px]" style={{ color: "hsl(210 18% 50%)" }}>
-                {[
-                  ["Model",          "qwen3:8b (Ollama)"],
-                  ["Embeddings",     "nomic-embed-text (768 dims)"],
-                  ["Database",       "Neon Postgres + pgvector"],
-                  ["Memory layers",  "L1 episodic · L2 semantic · L3 graph · L4 profile"],
-                  ["Decay",          "Intelligent half-life per entity type"],
-                  ["Auth tokens",    "Stored in settings table (DB), auto-refreshed"],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex justify-between">
-                    <span className="opacity-40">{k}</span>
-                    <span style={{ color: "hsl(210 18% 70%)" }}>{v}</span>
+          <TabsContent value="connections">
+            <ConnectionsSection
+              google={google}
+              loading={loading}
+              onRefresh={() => void load()}
+              onDisconnect={handleDisconnect}
+              onBanner={setBanner}
+            />
+          </TabsContent>
+
+          <TabsContent value="about">
+            <div className="space-y-4">
+              <div className="rounded-sm p-5 space-y-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0 bg-brand/10 border border-brand/20">
+                    <span className="text-brand text-lg font-mono">◈</span>
                   </div>
-                ))}
+                  <div>
+                    <p className="text-sm text-foreground">LocalMind</p>
+                    <p className="text-sm text-muted-foreground">v0.1.0 · localhost</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  {[
+                    ["Model",          "qwen3:8b (Ollama)"],
+                    ["Embeddings",     "nomic-embed-text (768 dims)"],
+                    ["Database",       "Neon Postgres + pgvector"],
+                    ["Memory layers",  "L1 episodic · L2 semantic · L3 graph · L4 profile"],
+                    ["Decay",          "Intelligent half-life per entity type"],
+                    ["Auth tokens",    "Stored in settings table (DB), auto-refreshed"],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="opacity-60">{k}</span>
+                      <span className="text-foreground/70">{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full font-mono text-[11px] opacity-30">loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full text-sm opacity-30">loading...</div>}>
       <SettingsContent />
     </Suspense>
   );
