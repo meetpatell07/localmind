@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { UserIcon, RefreshIcon, ArrowDown01Icon, ArrowUp01Icon } from "hugeicons-react";
 
 interface ProfileCardProps {
@@ -30,14 +31,16 @@ export function ProfileCard({ profile, onRebuild, rebuilding }: ProfileCardProps
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={(e) => { e.stopPropagation(); onRebuild(); }}
             disabled={rebuilding}
-            className="flex items-center gap-1.5 text-sm opacity-40 hover:opacity-80 transition-opacity disabled:opacity-20"
+            className="opacity-40 hover:opacity-80 transition-opacity disabled:opacity-20"
           >
             <RefreshIcon className={`h-3 w-3 ${rebuilding ? "animate-spin" : ""}`} />
             {rebuilding ? "rebuilding..." : "rebuild"}
-          </button>
+          </Button>
           {expanded
             ? <ArrowUp01Icon className="h-3.5 w-3.5 opacity-30" />
             : <ArrowDown01Icon className="h-3.5 w-3.5 opacity-30" />

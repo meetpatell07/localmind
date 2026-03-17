@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Sidebar } from "@/components/layout/sidebar";
+import { Button } from "@/components/ui/button";
 import { PanelLeftIcon } from "hugeicons-react";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -15,13 +16,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       />
       <main className="flex-1 overflow-auto md:ml-64 bg-gray-50">
         <div className="md:hidden px-4 pt-4">
-          <button
-            className="border-none p-2 cursor-pointer hover:bg-gray-50 active:bg-gray-100 rounded-md"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
             <PanelLeftIcon className="size-4" strokeWidth={2} />
-          </button>
+          </Button>
         </div>
         <section className="md:px-8 px-4 py-4 mb-8">{children}</section>
       </main>

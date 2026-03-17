@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 import { Mic01Icon, MicOff01Icon, VolumeHighIcon, VolumeOffIcon } from "hugeicons-react";
 
 interface SpeechRecognitionEvent extends Event {
@@ -182,16 +183,18 @@ export default function VoicePage() {
               push to talk · Web Speech API
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setTtsEnabled((v) => !v)}
-            className="flex items-center gap-1.5 text-sm opacity-40 hover:opacity-70 transition-opacity"
+            className="opacity-40 hover:opacity-70 transition-opacity"
           >
             {ttsEnabled
               ? <VolumeHighIcon className="h-3.5 w-3.5" />
               : <VolumeOffIcon className="h-3.5 w-3.5" />
             }
             {ttsEnabled ? "voice on" : "voice off"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -252,14 +255,15 @@ export default function VoicePage() {
             {transcript}
           </p>
         )}
-        <button
+        <Button
+          variant="ghost"
           onMouseDown={!listening ? toggleListen : undefined}
           onMouseUp={listening ? toggleListen : undefined}
           onTouchStart={!listening ? toggleListen : undefined}
           onTouchEnd={listening ? toggleListen : undefined}
           onClick={listening ? toggleListen : undefined}
           disabled={thinking}
-          className="relative flex items-center justify-center w-16 h-16 rounded-full transition-all disabled:opacity-30"
+          className="relative w-16 h-16 rounded-full transition-all disabled:opacity-30"
           style={{
             background: listening
               ? "rgba(240,160,21,0.15)"
@@ -276,7 +280,7 @@ export default function VoicePage() {
             ? <Mic01Icon className="h-6 w-6 animate-pulse" style={{ color: "var(--amber)" }} />
             : <Mic01Icon className="h-6 w-6 opacity-50" />
           }
-        </button>
+        </Button>
         <p className="text-sm opacity-20">
           {listening ? "listening... click to send" : "click to speak"}
         </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Delete02Icon, CircleIcon, CheckmarkCircle02Icon, Clock01Icon, ArrowRight01Icon } from "hugeicons-react";
 
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
@@ -52,7 +53,9 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
     >
       <div className="flex items-start gap-2.5">
         {/* Status toggle */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onStatusChange(task.id, STATUS_NEXT[task.status])}
           className="mt-0.5 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
           title={`Mark as ${STATUS_NEXT[task.status]}`}
@@ -63,7 +66,7 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
             ? <Clock01Icon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
             : <CircleIcon className="h-3.5 w-3.5" style={{ color: "hsl(215 12% 45%)" }} />
           }
-        </button>
+        </Button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -113,12 +116,14 @@ export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
         </div>
 
         {/* Delete */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onDelete(task.id)}
           className="shrink-0 opacity-0 group-hover:opacity-30 hover:!opacity-70 transition-opacity"
         >
           <Delete02Icon className="h-3 w-3" style={{ color: "rgba(248,113,113,0.8)" }} />
-        </button>
+        </Button>
       </div>
     </div>
   );

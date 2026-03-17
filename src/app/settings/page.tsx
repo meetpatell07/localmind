@@ -7,6 +7,9 @@ import {
   RefreshIcon, Unlink01Icon, LinkSquare02Icon, AlertDiamondIcon, InformationCircleIcon,
   UserIcon, FloppyDiskIcon, Loading03Icon, Logout01Icon,
 } from "hugeicons-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,19 +53,11 @@ function Field({
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-sm tracking-wider uppercase opacity-40">{label}</label>
-      <input
+      <Input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-sm text-sm focus:outline-none transition-colors"
-        style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid var(--line)",
-          color: "hsl(210 18% 80%)",
-        }}
-        onFocus={(e) => { e.target.style.borderColor = "rgba(240,160,21,0.4)"; }}
-        onBlur={(e) => { e.target.style.borderColor = "var(--line)"; }}
       />
     </div>
   );
@@ -178,10 +173,12 @@ function ProfileSection() {
               ✓ saved
             </span>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void handleSave()}
             disabled={saving || !isDirty()}
-            className="flex items-center gap-2 px-4 py-2 rounded-sm text-sm transition-all disabled:opacity-30"
+            className="transition-all disabled:opacity-30"
             style={{
               background: "var(--amber-dim)",
               border: "1px solid rgba(240,160,21,0.25)",
@@ -190,7 +187,7 @@ function ProfileSection() {
           >
             {saving ? <Loading03Icon className="h-3 w-3 animate-spin" /> : <FloppyDiskIcon className="h-3 w-3" />}
             {saving ? "saving..." : "Save changes"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -307,15 +304,17 @@ function ConnectorCard({
         {comingSoon ? (
           <span className="text-sm opacity-20">coming soon</span>
         ) : connected ? (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void handleDisconnect()}
             disabled={disconnecting}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-sm transition-all disabled:opacity-40"
+            className="transition-all disabled:opacity-40"
             style={{ border: "1px solid rgba(248,113,113,0.2)", color: "rgba(248,113,113,0.7)", background: "rgba(248,113,113,0.04)" }}
           >
             <Unlink01Icon className="h-3 w-3" />
             {disconnecting ? "disconnecting..." : "disconnect"}
-          </button>
+          </Button>
         ) : (
           <a
             href={connectHref}
@@ -343,7 +342,7 @@ function SetupGuide({ show }: { show: boolean }) {
           <InformationCircleIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
           <span className="text-sm" style={{ color: "var(--amber)" }}>Google OAuth setup required</span>
         </div>
-        <button onClick={() => setOpen(false)} className="text-sm opacity-30 hover:opacity-60">dismiss</button>
+        <Button variant="ghost" size="xs" onClick={() => setOpen(false)} className="opacity-30 hover:opacity-60">dismiss</Button>
       </div>
       <ol className="space-y-1.5 text-sm" style={{ color: "hsl(210 18% 60%)" }}>
         <li><span className="opacity-40 mr-2">1.</span>Go to <span style={{ color: "var(--amber)" }}>console.cloud.google.com</span> → New project → Enable Gmail API + Calendar API</li>
@@ -389,13 +388,15 @@ function ConnectionsSection({
         <span className="text-sm tracking-widest uppercase" style={{ color: "hsl(215 12% 35%)" }}>
           External services
         </span>
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={onRefresh}
-          className="flex items-center gap-1.5 text-sm opacity-30 hover:opacity-60 transition-opacity"
+          className="opacity-30 hover:opacity-60 transition-opacity"
         >
           <RefreshIcon className="h-3 w-3" />
           refresh
-        </button>
+        </Button>
       </div>
 
       <SetupGuide show={showSetupGuide} />
@@ -444,9 +445,11 @@ function ConnectionsSection({
               Revokes access &amp; removes all tokens from the database
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void handleGoogleLogout()}
-            className="flex items-center gap-2 px-4 py-2 rounded-sm text-sm transition-all"
+            className="transition-all"
             style={{
               border: "1px solid rgba(248,113,113,0.3)",
               color: "rgba(248,113,113,0.9)",
@@ -455,7 +458,7 @@ function ConnectionsSection({
           >
             <Logout01Icon className="h-3.5 w-3.5" />
             logout
-          </button>
+          </Button>
         </div>
       )}
 
@@ -487,7 +490,6 @@ function SettingsContent() {
   const [connData, setConnData] = useState<ConnectorsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<"profile" | "connections" | "about">("profile");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -524,109 +526,98 @@ function SettingsContent() {
 
   const google = connData?.connectors?.google ?? null;
 
-  const sections = [
-    { key: "profile"     as const, label: "Profile",     num: "01" },
-    { key: "connections" as const, label: "Connections",  num: "02" },
-    { key: "about"       as const, label: "About",        num: "03" },
-  ];
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="px-6 pt-5 pb-0 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
+      <div className="px-6 pt-5 pb-0 shrink-0">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <h1 className="font-display italic text-2xl leading-none" style={{ color: "var(--amber)" }}>
+            <h1 className="font-display italic text-2xl leading-none text-brand">
               Settings
             </h1>
-            <p className="text-sm opacity-25 mt-1">profile · connectors · about</p>
+            <p className="text-sm text-muted-foreground mt-1">profile · connectors · about</p>
           </div>
-          {loading && <span className="text-sm opacity-30 mb-1 animate-pulse">loading...</span>}
-        </div>
-        <div className="flex gap-0">
-          {sections.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setActiveSection(s.key)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm transition-all"
-              style={
-                activeSection === s.key
-                  ? { color: "var(--amber)", borderBottom: "2px solid var(--amber)", marginBottom: "-1px" }
-                  : { color: "hsl(215 12% 45%)", borderBottom: "2px solid transparent", marginBottom: "-1px" }
-              }
-            >
-              <span className="opacity-30 text-sm">{s.num}</span>
-              {s.label}
-            </button>
-          ))}
+          {loading && <span className="text-sm text-muted-foreground mb-1 animate-pulse">loading...</span>}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-        {/* Banner */}
-        {banner && (
-          <div
-            className="flex items-center gap-3 px-4 py-3 rounded-sm"
-            style={{
-              background: banner.type === "success" ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
-              border: `1px solid ${banner.type === "success" ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
-            }}
-          >
-            {banner.type === "success"
-              ? <CheckmarkCircle02Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "#4ade80" }} />
-              : <AlertDiamondIcon className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} />
-            }
-            <span className="text-sm flex-1" style={{ color: banner.type === "success" ? "#4ade80" : "#f87171" }}>
-              {banner.message}
-            </span>
-            <button onClick={() => setBanner(null)} className="text-sm opacity-30 hover:opacity-60 shrink-0">×</button>
-          </div>
-        )}
+      <Tabs defaultValue="profile" className="flex flex-col flex-1 overflow-hidden gap-0">
+        <div className="px-6 shrink-0">
+          <TabsList>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="connections">Connections</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+          </TabsList>
+        </div>
 
-        {activeSection === "profile" && <ProfileSection />}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {/* Banner */}
+          {banner && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-sm mb-5"
+              style={{
+                background: banner.type === "success" ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
+                border: `1px solid ${banner.type === "success" ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+              }}
+            >
+              {banner.type === "success"
+                ? <CheckmarkCircle02Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "#4ade80" }} />
+                : <AlertDiamondIcon className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} />
+              }
+              <span className="text-sm flex-1" style={{ color: banner.type === "success" ? "#4ade80" : "#f87171" }}>
+                {banner.message}
+              </span>
+              <Button variant="ghost" size="icon-xs" onClick={() => setBanner(null)} className="opacity-30 hover:opacity-60 shrink-0">×</Button>
+            </div>
+          )}
 
-        {activeSection === "connections" && (
-          <ConnectionsSection
-            google={google}
-            loading={loading}
-            onRefresh={() => void load()}
-            onDisconnect={handleDisconnect}
-            onBanner={setBanner}
-          />
-        )}
+          <TabsContent value="profile">
+            <ProfileSection />
+          </TabsContent>
 
-        {activeSection === "about" && (
-          <div className="space-y-4">
-            <div className="rounded-sm p-5 space-y-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0" style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)" }}>
-                  <span style={{ color: "var(--amber)", fontSize: "18px", fontFamily: "monospace" }}>◈</span>
-                </div>
-                <div>
-                  <p className="text-sm" style={{ color: "hsl(210 18% 88%)" }}>LocalMind</p>
-                  <p className="text-sm opacity-30">v0.1.0 · localhost</p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm" style={{ color: "hsl(210 18% 50%)" }}>
-                {[
-                  ["Model",          "qwen3:8b (Ollama)"],
-                  ["Embeddings",     "nomic-embed-text (768 dims)"],
-                  ["Database",       "Neon Postgres + pgvector"],
-                  ["Memory layers",  "L1 episodic · L2 semantic · L3 graph · L4 profile"],
-                  ["Decay",          "Intelligent half-life per entity type"],
-                  ["Auth tokens",    "Stored in settings table (DB), auto-refreshed"],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex justify-between">
-                    <span className="opacity-40">{k}</span>
-                    <span style={{ color: "hsl(210 18% 70%)" }}>{v}</span>
+          <TabsContent value="connections">
+            <ConnectionsSection
+              google={google}
+              loading={loading}
+              onRefresh={() => void load()}
+              onDisconnect={handleDisconnect}
+              onBanner={setBanner}
+            />
+          </TabsContent>
+
+          <TabsContent value="about">
+            <div className="space-y-4">
+              <div className="rounded-sm p-5 space-y-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0 bg-brand/10 border border-brand/20">
+                    <span className="text-brand text-lg font-mono">◈</span>
                   </div>
-                ))}
+                  <div>
+                    <p className="text-sm text-foreground">LocalMind</p>
+                    <p className="text-sm text-muted-foreground">v0.1.0 · localhost</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  {[
+                    ["Model",          "qwen3:8b (Ollama)"],
+                    ["Embeddings",     "nomic-embed-text (768 dims)"],
+                    ["Database",       "Neon Postgres + pgvector"],
+                    ["Memory layers",  "L1 episodic · L2 semantic · L3 graph · L4 profile"],
+                    ["Decay",          "Intelligent half-life per entity type"],
+                    ["Auth tokens",    "Stored in settings table (DB), auto-refreshed"],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="opacity-60">{k}</span>
+                      <span className="text-foreground/70">{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }

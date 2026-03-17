@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { CheckmarkSquare01Icon, PlusSignIcon, GridViewIcon, LeftToRightListDashIcon, SparklesIcon, MagicWand01Icon, AlertCircleIcon } from "hugeicons-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { KanbanBoard } from "@/components/planner/kanban-board";
 import { TaskCard } from "@/components/planner/task-card";
 import { TaskSkeleton, PlanSkeleton } from "@/components/ui/skeleton";
@@ -146,10 +148,12 @@ export default function PlannerPage() {
             {loading && <span className="text-sm opacity-30 animate-pulse">loading...</span>}
 
             {/* AI plan button */}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleGeneratePlan}
               disabled={planLoading}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-sm disabled:opacity-40 transition-colors"
+              className="disabled:opacity-40 transition-colors"
               style={{
                 background: showPlan ? "var(--amber-dim)" : "rgba(255,255,255,0.03)",
                 color: showPlan ? "var(--amber)" : "hsl(215 12% 50%)",
@@ -158,13 +162,15 @@ export default function PlannerPage() {
             >
               <SparklesIcon className="h-3.5 w-3.5" />
               {planLoading ? "planning..." : "daily plan"}
-            </button>
+            </Button>
 
             {/* View toggle */}
             <div className="flex items-center" style={{ border: "1px solid var(--line)", borderRadius: "3px" }}>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setView("kanban")}
-                className="p-1.5 transition-colors"
+                className="rounded-none transition-colors"
                 style={{
                   background: view === "kanban" ? "var(--amber-dim)" : "transparent",
                   color: view === "kanban" ? "var(--amber)" : "hsl(215 12% 40%)",
@@ -172,23 +178,26 @@ export default function PlannerPage() {
                 }}
               >
                 <GridViewIcon className="h-3.5 w-3.5" />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setView("list")}
-                className="p-1.5 transition-colors"
+                className="rounded-none transition-colors"
                 style={{
                   background: view === "list" ? "var(--amber-dim)" : "transparent",
                   color: view === "list" ? "var(--amber)" : "hsl(215 12% 40%)",
                 }}
               >
                 <LeftToRightListDashIcon className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
 
             {/* Add task */}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setShowAdd((v) => !v)}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-sm"
               style={{
                 background: showAdd ? "var(--amber-dim)" : "rgba(240,160,21,0.08)",
                 color: "var(--amber)",
@@ -197,7 +206,7 @@ export default function PlannerPage() {
             >
               <PlusSignIcon className="h-3.5 w-3.5" />
               add task
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -208,22 +217,24 @@ export default function PlannerPage() {
             style={{ border: "1px solid var(--line)", borderRadius: "3px", background: "var(--surface-raised)" }}
           >
             <MagicWand01Icon className="h-3.5 w-3.5 opacity-30 shrink-0" style={{ color: "var(--amber)" }} />
-            <input
+            <Input
               value={nlInput}
               onChange={(e) => setNlInput(e.target.value)}
               placeholder="remind me to review PRs tomorrow morning..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-20"
+              className="flex-1 bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
               style={{ color: "hsl(210 18% 80%)" }}
             />
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="submit"
             disabled={nlParsing || !nlInput.trim()}
-            className="text-sm px-3 py-2 rounded-sm disabled:opacity-30"
+            className="disabled:opacity-30"
             style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid rgba(240,160,21,0.2)" }}
           >
             {nlParsing ? "parsing..." : "→"}
-          </button>
+          </Button>
         </form>
 
         {/* Manual add form */}
@@ -233,29 +244,30 @@ export default function PlannerPage() {
             className="mt-3 p-4 rounded-sm space-y-3"
             style={{ background: "var(--navy)", border: "1px solid var(--line)" }}
           >
-            <input
+            <Input
               autoFocus
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="Task title..."
-              className="w-full bg-transparent text-sm outline-none placeholder:opacity-20"
+              className="w-full bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
               style={{ color: "hsl(210 18% 85%)" }}
             />
-            <input
+            <Input
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Description (optional)..."
-              className="w-full bg-transparent text-sm outline-none placeholder:opacity-20"
+              className="w-full bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
               style={{ color: "hsl(210 18% 60%)" }}
             />
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex gap-1">
                 {(["low", "medium", "high"] as TaskPriority[]).map((p) => (
-                  <button
+                  <Button
                     key={p}
+                    variant="ghost"
+                    size="xs"
                     type="button"
                     onClick={() => setNewPriority(p)}
-                    className="text-sm px-2 py-1 rounded-sm"
                     style={{
                       background: newPriority === p ? "var(--amber-dim)" : "rgba(255,255,255,0.04)",
                       color: newPriority === p ? "var(--amber)" : "hsl(215 12% 45%)",
@@ -263,26 +275,28 @@ export default function PlannerPage() {
                     }}
                   >
                     {p}
-                  </button>
+                  </Button>
                 ))}
               </div>
-              <input
+              <Input
                 type="date"
                 value={newDue}
                 onChange={(e) => setNewDue(e.target.value)}
-                className="bg-transparent text-sm outline-none opacity-40 focus:opacity-80"
+                className="bg-transparent border-none h-auto p-0 w-auto focus:ring-0 focus:border-none opacity-40 focus:opacity-80"
                 style={{ color: "hsl(210 18% 70%)" }}
               />
               <div className="ml-auto flex gap-2">
-                <button type="button" onClick={() => setShowAdd(false)} className="text-sm opacity-30 hover:opacity-60">cancel</button>
-                <button
+                <Button variant="ghost" size="xs" type="button" onClick={() => setShowAdd(false)} className="opacity-30 hover:opacity-60">cancel</Button>
+                <Button
+                  variant="ghost"
+                  size="xs"
                   type="submit"
                   disabled={adding || !newTitle.trim()}
-                  className="text-sm px-3 py-1 rounded-sm disabled:opacity-30"
+                  className="disabled:opacity-30"
                   style={{ background: "var(--amber-dim)", color: "var(--amber)" }}
                 >
                   {adding ? "adding..." : "add →"}
-                </button>
+                </Button>
               </div>
             </div>
           </form>
@@ -300,7 +314,7 @@ export default function PlannerPage() {
           >
             <AlertCircleIcon className="h-4 w-4 shrink-0" />
             {error}
-            <button onClick={load} className="ml-auto opacity-60 hover:opacity-100">retry →</button>
+            <Button variant="ghost" size="xs" onClick={load} className="ml-auto opacity-60 hover:opacity-100">retry →</Button>
           </div>
         )}
 
@@ -319,14 +333,16 @@ export default function PlannerPage() {
                 <span className="text-sm tracking-widest uppercase opacity-60">Today&apos;s Focus</span>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={handleGeneratePlan}
                   disabled={planLoading}
-                  className="text-sm opacity-30 hover:opacity-70 disabled:opacity-20"
+                  className="opacity-30 hover:opacity-70 disabled:opacity-20"
                 >
                   {planLoading ? "..." : "refresh"}
-                </button>
-                <button onClick={() => setShowPlan(false)} className="text-sm opacity-20 hover:opacity-50">✕</button>
+                </Button>
+                <Button variant="ghost" size="icon-xs" onClick={() => setShowPlan(false)} className="opacity-20 hover:opacity-50">✕</Button>
               </div>
             </div>
             <div className="px-4 py-3" style={{ background: "var(--navy)" }}>
@@ -365,13 +381,15 @@ export default function PlannerPage() {
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <CheckmarkSquare01Icon className="h-8 w-8 opacity-10" />
             <p className="text-sm opacity-25">no tasks yet</p>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setShowAdd(true)}
-              className="text-sm opacity-40 hover:opacity-70"
+              className="opacity-40 hover:opacity-70"
               style={{ color: "var(--amber)" }}
             >
               add your first task →
-            </button>
+            </Button>
           </div>
         ) : view === "kanban" ? (
           <KanbanBoard tasks={tasks} onStatusChange={handleStatusChange} onDelete={handleDelete} />

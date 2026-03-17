@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { SentIcon, RefreshIcon, Mail01Icon, MailOpenIcon, AlertCircleIcon, Loading03Icon, PlusSignIcon, MailReply01Icon, Calendar03Icon } from "hugeicons-react";
+import { Button } from "@/components/ui/button";
 
 interface EmailSummary {
   id: string;
@@ -98,14 +99,15 @@ function InboxPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
         <span className="text-sm" style={{ color: "hsl(210 18% 60%)" }}>INBOX</span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => void fetchEmails()}
-          className="p-1 rounded-sm transition-colors"
           style={{ color: "hsl(215 12% 40%)" }}
           disabled={loading}
         >
           <RefreshIcon className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        </Button>
       </div>
 
       {/* List */}
@@ -125,10 +127,11 @@ function InboxPanel({
         {emails.map((email) => {
           const active = selectedId === email.id;
           return (
-            <button
+            <Button
               key={email.id}
+              variant="ghost"
               onClick={() => onSelectEmail(email)}
-              className="w-full text-left px-4 py-3 transition-colors"
+              className="w-full text-left px-4 py-3 h-auto rounded-none transition-colors"
               style={{
                 background: active ? "var(--amber-dim)" : "transparent",
                 borderLeft: active ? "2px solid var(--amber)" : "2px solid transparent",
@@ -165,7 +168,7 @@ function InboxPanel({
                   </p>
                 </div>
               </div>
-            </button>
+            </Button>
           );
         })}
 
@@ -180,27 +183,31 @@ function InboxPanel({
       <div className="px-4 py-3 shrink-0 flex flex-col gap-2" style={{ borderTop: "1px solid var(--line)" }}>
         {/* Draft reply — shown when an email is selected */}
         {selectedEmail && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() =>
               onAskAI(
                 `Draft a reply to this email. Check my calendar availability first if scheduling is involved, then write a professional reply.\n\nEmail ID: ${selectedEmail.id}\nFrom: ${selectedEmail.from}\nSubject: ${selectedEmail.subject || "(no subject)"}`
               )
             }
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm transition-colors"
+            className="w-full justify-start transition-colors"
             style={{ background: "rgba(99,102,241,0.08)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)" }}
           >
             <MailReply01Icon className="h-3 w-3 shrink-0" />
             Draft reply with AI
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => onAskAI("What are my most important unread emails?")}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm transition-colors"
+          className="w-full justify-start transition-colors"
           style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid rgba(240,160,21,0.15)" }}
         >
           <PlusSignIcon className="h-3 w-3 shrink-0" />
           Ask AI about inbox
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -315,19 +322,21 @@ function ChatPanel({
             </p>
             <div className="flex flex-col gap-2 mt-4 w-full max-w-xs">
               {quickPrompts.map((s) => (
-                <button
+                <Button
                   key={s}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     const full = selectedEmail
                       ? `${s}\n\n[Selected email — From: ${selectedEmail.from} | Subject: ${selectedEmail.subject || "(no subject)"} | ID: ${selectedEmail.id}]`
                       : s;
                     sendMessage({ text: full });
                   }}
-                  className="text-left px-3 py-2 rounded-sm text-sm transition-colors"
+                  className="text-left justify-start h-auto py-2"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--line)", color: "hsl(210 12% 55%)" }}
                 >
                   {s}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -482,14 +491,16 @@ function ChatPanel({
             maxHeight: "120px",
           }}
         />
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           type="submit"
           disabled={!input.trim() || isStreaming}
-          className="shrink-0 p-2 rounded-sm transition-colors disabled:opacity-30"
+          className="shrink-0 transition-colors disabled:opacity-30"
           style={{ background: "var(--amber-dim)", border: "1px solid rgba(240,160,21,0.2)", color: "var(--amber)" }}
         >
           <SentIcon className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </form>
     </div>
   );

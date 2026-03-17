@@ -13,6 +13,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { Button } from "@/components/ui/button";
 import { Cancel01Icon } from "hugeicons-react";
 import type { GraphPayload } from "@/app/api/memory/graph/route";
 
@@ -176,12 +177,14 @@ function NodeDetailPanel({
             {!d.isValueNode && ` · ${d.mentionCount}×`}
           </div>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={onClose}
           className="shrink-0 ml-2 opacity-30 hover:opacity-70 transition-opacity"
         >
           <Cancel01Icon className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/* Scrollable body */}
@@ -333,10 +336,12 @@ function TypeFilterBar({
         const colors = TYPE_COLORS[type] ?? TYPE_COLORS.other;
         const isActive = activeTypes.size === 0 || activeTypes.has(type);
         return (
-          <button
+          <Button
             key={type}
+            variant="ghost"
+            size="xs"
             onClick={() => toggle(type)}
-            className="text-sm px-1.5 py-0.5 rounded-sm transition-all uppercase tracking-widest"
+            className="uppercase tracking-widest"
             style={{
               background: isActive ? colors.bg : "transparent",
               border: `1px solid ${isActive ? colors.border : "transparent"}`,
@@ -344,16 +349,18 @@ function TypeFilterBar({
             }}
           >
             {type}
-          </button>
+          </Button>
         );
       })}
       {activeTypes.size > 0 && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onChange(new Set())}
-          className="text-sm opacity-30 hover:opacity-60 ml-1 transition-opacity"
+          className="opacity-30 hover:opacity-60 ml-1 transition-opacity"
         >
           ×
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -486,13 +493,14 @@ export function GraphView() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <span className="text-sm opacity-40">{error}</span>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={load}
-          className="text-sm"
           style={{ color: "var(--amber)" }}
         >
           retry →
-        </button>
+        </Button>
       </div>
     );
   }
@@ -523,12 +531,14 @@ export function GraphView() {
         <span style={{ color: "var(--amber)" }}>{nodeCount} nodes</span>
         <span className="opacity-20">·</span>
         <span className="opacity-40">{edgeCount} edges</span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={load}
           className="opacity-30 hover:opacity-60 transition-opacity ml-1"
         >
           ↺
-        </button>
+        </Button>
       </div>
 
       {/* Type filter */}

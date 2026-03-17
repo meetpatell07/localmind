@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FolderOpenIcon, Upload01Icon, Search01Icon, File01Icon, FileAttachmentIcon, Image01Icon, Archive02Icon } from "hugeicons-react";
 
 interface VaultFile {
@@ -92,10 +94,11 @@ export default function FilesPage() {
               className="hidden"
               onChange={handleUpload}
             />
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-sm disabled:opacity-40"
               style={{
                 background: "rgba(240,160,21,0.08)",
                 color: "var(--amber)",
@@ -104,7 +107,7 @@ export default function FilesPage() {
             >
               <Upload01Icon className="h-3.5 w-3.5" />
               {uploading ? "uploading..." : "upload"}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -114,21 +117,23 @@ export default function FilesPage() {
           style={{ border: "1px solid var(--line)", borderRadius: "3px", background: "var(--navy)" }}
         >
           <Search01Icon className="h-3.5 w-3.5 opacity-30 shrink-0" />
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleSearchKey}
             placeholder="search files..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-20"
+            className="flex-1 bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
             style={{ color: "hsl(210 18% 80%)" }}
           />
           {search && (
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => { setSearch(""); load(); }}
-              className="text-sm opacity-30 hover:opacity-60"
+              className="opacity-30 hover:opacity-60"
             >
               clear
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -139,13 +144,15 @@ export default function FilesPage() {
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <FolderOpenIcon className="h-8 w-8 opacity-10" />
             <p className="text-sm opacity-25">vault is empty</p>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="text-sm opacity-40 hover:opacity-70 transition-opacity"
+              className="opacity-40 hover:opacity-70 transition-opacity"
               style={{ color: "var(--amber)" }}
             >
               upload your first file →
-            </button>
+            </Button>
           </div>
         ) : (
           <div>

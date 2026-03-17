@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { NeuralNetworkIcon, ArrowDown01Icon, ArrowRight01Icon } from "hugeicons-react";
 
 interface Relationship {
@@ -75,11 +77,11 @@ export function EntityList({ entities }: EntityListProps) {
             {entities.length}
           </span>
         </div>
-        <input
+        <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="filter..."
-          className="bg-transparent text-sm outline-none placeholder:opacity-20 text-right w-24"
+          className="bg-transparent border-none text-right w-24 h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
           style={{ color: "hsl(210 18% 70%)" }}
         />
       </div>
@@ -115,8 +117,9 @@ export function EntityList({ entities }: EntityListProps) {
               return (
                 <div key={entity.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   {/* Row */}
-                  <button
-                    className="w-full text-left grid px-4 py-2.5 hover:bg-white/[0.02] transition-colors"
+                  <Button
+                    variant="ghost"
+                    className="w-full text-left grid px-4 py-2.5 h-auto rounded-none hover:bg-white/[0.02]"
                     style={{ gridTemplateColumns: "1fr 80px 50px" }}
                     onClick={() => toggle(entity.id)}
                   >
@@ -155,7 +158,7 @@ export function EntityList({ entities }: EntityListProps) {
                     >
                       {entity.mentionCount ?? 1}
                     </span>
-                  </button>
+                  </Button>
 
                   {/* Relationships */}
                   {isOpen && entity.relationships.length > 0 && (

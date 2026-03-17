@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { UIMessage } from "ai";
 import { MessageBubble } from "./message-bubble";
+import { Button } from "@/components/ui/button";
 import { Brain02Icon, SparklesIcon } from "hugeicons-react";
 
 interface MessageListProps {
@@ -41,15 +42,16 @@ export function MessageList({ messages, isStreaming, onSendMessage }: MessageLis
           </div>
           <div className="flex flex-wrap gap-2 justify-center">
             {SUGGESTED_PROMPTS.map((prompt) => (
-              <button
+              <Button
                 key={prompt}
-                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onSendMessage({ text: prompt })}
-                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-gray-50 hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <SparklesIcon className="h-3 w-3" />
                 {prompt}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

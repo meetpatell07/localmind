@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/chat-input";
+import { Button } from "@/components/ui/button";
 import { AlertCircleIcon, RefreshIcon } from "hugeicons-react";
 
 export default function ChatPage() {
@@ -74,13 +75,15 @@ export default function ChatPage() {
           <span className="text-sm text-destructive">
             Ollama is starting up — responses will resume shortly
           </span>
-          <button
-            className="ml-auto flex items-center gap-1.5 text-sm text-destructive/70 hover:text-destructive transition-colors"
+          <Button
+            variant="ghost"
+            size="xs"
+            className="ml-auto text-destructive/70 hover:text-destructive transition-colors"
             onClick={checkOllama}
           >
             <RefreshIcon className="h-3 w-3" />
             retry
-          </button>
+          </Button>
         </div>
       )}
 

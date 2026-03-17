@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import { SquareIcon, ArrowUp01Icon } from "hugeicons-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
@@ -57,20 +58,22 @@ export function ChatInput({ onSendMessage, isStreaming, stop, disabled }: ChatIn
           className="flex-1 resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground min-h-[24px] max-h-[200px]"
         />
         {isStreaming && stop ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={stop}
-            className="shrink-0 p-1.5 rounded-md bg-destructive/10 border border-destructive/20 text-destructive hover:bg-destructive/15 transition-colors"
+            className="shrink-0 bg-destructive/10 border border-destructive/20 text-destructive hover:bg-destructive/15"
           >
             <SquareIcon className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={submit}
             disabled={!input.trim() || disabled}
             className={cn(
-              "shrink-0 p-1.5 rounded-md transition-all",
+              "shrink-0 transition-all",
               input.trim()
                 ? "bg-foreground text-background hover:bg-foreground/90"
                 : "bg-gray-100 text-muted-foreground",
@@ -78,7 +81,7 @@ export function ChatInput({ onSendMessage, isStreaming, stop, disabled }: ChatIn
             )}
           >
             <ArrowUp01Icon className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         )}
       </div>
       <p className="text-sm text-muted-foreground text-center mt-2">
