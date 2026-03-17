@@ -1,3 +1,4 @@
+import { generateText } from "ai";
 import { db } from "@/db";
 import { entities, relationships, embeddings, atomicFacts } from "@/db/schema";
 import { eq, and, ilike, sql, inArray, gte } from "drizzle-orm";
@@ -6,6 +7,7 @@ import type { EntityWithRelationships } from "@/shared/types";
 import { OLLAMA_BASE_URL, EMBEDDING_MODEL } from "@/shared/constants";
 import { hot, HOT_KEY } from "./hot";
 import { reinforceEntity, DECAY_ARCHIVE_THRESHOLD } from "./decay";
+import { extractionModel } from "@/agent/ollama";
 
 // ── Embedding helper ──────────────────────────────────────────────────────────
 // Inlined here so entity.ts has no circular dependency on semantic.ts.
@@ -142,6 +144,60 @@ async function storeEntityNameEmbedding(
   );
 }
 
+// ── Entity summary builder (Graphiti-style evolving summary) ─────────────────
+/**
+ * Rebuild the ~100-token summary for an entity by asking the LLM to describe it
+ * based on its name, type, attributes, and active relationships.
+ * Runs async — never blocks the pipeline.
+ */
+async function rebuildEntitySummary(entityId: string): Promise<void> {
+  try {
+    const [entityRow] = await db
+      .select({ name: entities.name, type: entities.type, attributes: entities.attributes })
+      .from(entities)
+      .where(eq(entities.id, entityId))
+      .limit(1);
+
+    if (!entityRow) return;
+
+    const relRows = await db
+      .select({ predicate: relationships.predicate, objectValue: relationships.objectValue })
+      .from(relationships)
+      .where(and(eq(relationships.subjectId, entityId), eq(relationships.isActive, true)))
+      .limit(20);
+
+    const attrText = Object.entries((entityRow.attributes as Record<string, string>) ?? {})
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(", ");
+
+    const relText = relRows
+      .map((r) => `${r.predicate.replace(/_/g, " ")}: ${r.objectValue ?? "?"}`)
+      .join("; ");
+
+    const prompt = [
+      `Entity: "${entityRow.name}" (${entityRow.type})`,
+      attrText  ? `Attributes: ${attrText}` : "",
+      relText   ? `Known facts: ${relText}` : "",
+      `Write a single concise sentence (max 80 words) describing what is known about this entity. Be factual and specific. No filler.`,
+    ].filter(Boolean).join("\n");
+
+    const { text } = await generateText({
+      model: extractionModel,
+      prompt,
+      temperature: 0.0,
+      abortSignal: AbortSignal.timeout(20_000),
+    });
+
+    const summary = text.trim().slice(0, 500);
+    if (summary.length > 10) {
+      await db.update(entities).set({ summary }).where(eq(entities.id, entityId));
+      hot.delete(HOT_KEY.graphNodes()); // invalidate graph cache
+    }
+  } catch {
+    // Non-fatal — summary rebuilds silently fail
+  }
+}
+
 // ── Core upsert ───────────────────────────────────────────────────────────────
 /**
  * Find-or-create an entity with full vector dedup.
@@ -195,6 +251,12 @@ async function upsertEntity(
     // If this alias is new, also store its embedding for future lookups
     if (newAliases.length > (existing.aliases?.length ?? 0)) {
       storeEntityNameEmbedding(existing.id, trimmedName).catch(() => {});
+    }
+
+    // Rebuild summary every 5th mention (Graphiti-style evolving description)
+    const newMentionCount = (attrRows[0]?.mentionCount ?? 1) + 1;
+    if (newMentionCount % 5 === 0) {
+      rebuildEntitySummary(existing.id).catch(() => {});
     }
 
     return existing.id;

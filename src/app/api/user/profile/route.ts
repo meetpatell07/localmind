@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { userProfile } from "@/db/schema";
+import { invalidateUserIdentityCache } from "@/memory";
 import { z } from "zod";
 
 const UpdateSchema = z.object({
@@ -46,12 +47,14 @@ export async function PATCH(req: Request): Promise<Response> {
         .update(userProfile)
         .set(updates)
         .returning();
+      invalidateUserIdentityCache();
       return Response.json({ profile: updated });
     } else {
       const [created] = await db
         .insert(userProfile)
         .values(updates)
         .returning();
+      invalidateUserIdentityCache();
       return Response.json({ profile: created });
     }
   } catch (err) {

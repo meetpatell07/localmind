@@ -17,8 +17,21 @@ export interface RecentTurn {
   sessionId: string;
 }
 
+export interface UserIdentity {
+  displayName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  linkedin?: string | null;
+  portfolioWeb?: string | null;
+  instagram?: string | null;
+  xHandle?: string | null;
+  facebook?: string | null;
+}
+
 export interface MemoryContext {
-  profile: string | null;
+  userIdentity: UserIdentity | null;  // Explicit facts entered by the user in Settings > Profile
+  profile: string | null;             // L4: AI-generated summary rebuilt from conversations
   relevantMemories: string[];
   relevantEntities: EntityWithRelationships[];
   recentHistory: RecentTurn[];        // L1 episodic: last N turns across sessions

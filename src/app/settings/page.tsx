@@ -76,7 +76,7 @@ function ProfileSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     void (async () => {

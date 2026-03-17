@@ -1,17 +1,20 @@
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import type { UIMessage } from "ai";
 import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
-import { recall, remember, createSession } from "@/memory";
+import { recallFast, remember, createSession } from "@/memory";
+import { coreTools } from "@/agent/tools";
 import { z } from "zod";
 
 const RequestSchema = z.object({
-  messages: z.array(z.object({
-    id: z.string().optional(),
-    role: z.enum(["user", "assistant", "system"]),
-    content: z.string().optional().default(""),
-    parts: z.array(z.any()).optional(),
-  }).passthrough()),
+  messages: z.array(
+    z.object({
+      id:      z.string().optional(),
+      role:    z.enum(["user", "assistant", "system"]),
+      content: z.string().optional().default(""),
+      parts:   z.array(z.any()).optional(),
+    }).passthrough()
+  ),
   sessionId: z.string().uuid().nullish(),
 });
 
@@ -33,16 +36,15 @@ export async function POST(req: Request): Promise<Response> {
 
   const { messages, sessionId: incomingSessionId } = parsed.data;
 
-  // Extract text from the last user message (parts or content)
+  // Extract the last user message text (v6 parts or legacy content)
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUserMsg) {
     return Response.json({ error: "No user message" }, { status: 400 });
   }
 
-  // v6 UIMessage: text lives in parts[].text; fall back to content for compat
   const userText: string = (() => {
     if (lastUserMsg.parts) {
-      const textPart = (lastUserMsg.parts as Array<{type: string; text?: string}>)
+      const textPart = (lastUserMsg.parts as Array<{ type: string; text?: string }>)
         .find((p) => p.type === "text");
       if (textPart?.text) return textPart.text;
     }
@@ -51,40 +53,41 @@ export async function POST(req: Request): Promise<Response> {
 
   const sessionId = incomingSessionId ?? (await createSession());
 
-  // Recall memory context
+  // Fast context — only hot-cached data (~0ms when warm).
+  // The AI fetches deeper context on demand via recall_memories tool.
   let memoryCtx;
   try {
-    memoryCtx = await recall(userText);
+    memoryCtx = await recallFast();
   } catch {
     memoryCtx = {
-      profile: null,
+      userIdentity:     null,
+      profile:          null,
       relevantMemories: [],
       relevantEntities: [],
-      recentHistory: [],
+      recentHistory:    [],
       sessionSummaries: [],
     };
   }
 
   const systemPrompt = buildSystemPrompt(memoryCtx);
-
-  // v6: convertToModelMessages (was convertToCoreMessages in v4)
   const modelMessages = await convertToModelMessages(messages as UIMessage[]);
 
   const result = streamText({
     model: chatModel,
     system: systemPrompt,
     messages: modelMessages,
+    tools: coreTools,
+    stopWhen: stepCountIs(5), // allow up to 5 tool call → response cycles
     temperature: 0.7,
     onFinish: async ({ text }) => {
       try {
         await remember(sessionId, userText, text);
       } catch {
-        // Non-fatal
+        // Non-fatal — memory pipeline failure never blocks the user
       }
     },
   });
 
-  // v6: toUIMessageStreamResponse (was toDataStreamResponse in v4)
   const response = result.toUIMessageStreamResponse();
   const headers = new Headers(response.headers);
   headers.set("X-Session-Id", sessionId);

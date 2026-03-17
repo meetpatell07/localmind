@@ -38,40 +38,47 @@ export const ExtractionSchema = z.object({
       z.object({
         subject: z.string().min(1).max(100),
         // Short snake_case verb phrase: works_on, uses, prefers, owns, …
-        predicate: z.string().min(1).max(60),
-        object: z.string().min(1).max(100),
+        predicate: z.string().min(1).max(80),
+        object: z.string().min(1).max(200),
         confidence: z.number().min(0).max(1).default(0.8),
       })
     )
-    .max(20)
+    .max(30)
     .default([]),
 });
 
 export type ExtractionResult = z.infer<typeof ExtractionSchema>;
 
 // ── System prompt ─────────────────────────────────────────────────────────────
-const SYSTEM = `You are a knowledge-graph extractor. Given a conversation transcript, output a JSON object with entities and relationships.
+const SYSTEM = `You are a knowledge-graph extractor. Given a conversation, output a JSON object with entities and relationships that form a personal knowledge graph.
 
 Entity types:
-  person       → named individuals (use real name, never "the user" or "I")
-  project      → software projects, products, codebases, features
-  technology   → languages, frameworks, libraries, tools, services, platforms
-  preference   → stated likes, dislikes, habits, working style, opinions
-  concept      → abstract ideas, methodologies, domains
-  organization → companies, teams, departments, open-source communities
-  event        → meetings, releases, deadlines, incidents
-  other        → anything that doesn't fit above
+  person       → named individuals (use real name — if user says "I" or "my", use their actual name if known; otherwise skip)
+  project      → software projects, products, codebases, features, side projects
+  technology   → languages, frameworks, libraries, tools, services, platforms, APIs
+  preference   → stated likes, dislikes, habits, working style, opinions, values
+  concept      → abstract ideas, methodologies, domains, skills
+  organization → companies, teams, departments, clients, communities
+  event        → meetings, releases, deadlines, milestones, incidents
+  other        → locations, documents, resources that don't fit above
 
-Relationship predicates must be short snake_case verb phrases, e.g.:
-  works_on, uses, knows, prefers, built, owns, manages, is_part_of,
-  dislikes, has_role, works_at, interested_in, learning, blocked_by
+Relationship predicates must be short snake_case verb phrases:
+  Person relations:   has_role, works_at, knows, manages, reports_to, collaborates_with, lives_in
+  Project relations:  works_on, built, owns, uses_technology, has_feature, blocked_by, depends_on
+  Tech relations:     built_with, integrates_with, is_part_of, replaces, similar_to
+  Preference:         prefers, dislikes, interested_in, learning, values
+  Temporal:           started_on, completed_on, deadline_is, happened_on
+  General:            is_a, has_attribute, located_at, created_by, used_for
 
 Rules:
-1. Only extract facts that are clearly stated — no speculation.
-2. If the user refers to themselves by name, use that exact name as the entity.
-3. Prefer canonical names: "TypeScript" not "TS", "React" not "react.js".
-4. Skip trivial/meta entities: "question", "response", "message", "conversation".
-5. Return empty arrays if nothing meaningful is present.`;
+1. Only extract facts that are explicitly stated — no inference or speculation.
+2. Represent every named person, project, tool, or organization mentioned as an entity.
+3. Prefer canonical names: "TypeScript" not "TS", "PostgreSQL" not "postgres".
+4. For the primary user speaking, use their real name if you know it; if not, skip "I"/"me" entities.
+5. Each relationship triple must have a clear subject AND object from the entities list.
+6. Skip trivial meta-entities: "question", "response", "message", "conversation", "answer".
+7. Confidence: 0.95 = explicitly stated, 0.8 = clearly implied, 0.6 = mentioned in passing.
+8. Return empty arrays if the conversation contains no meaningful facts.`;
 
 // ── Main extraction function ──────────────────────────────────────────────────
 /**

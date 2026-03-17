@@ -45,6 +45,8 @@ export const entities = pgTable("entities", {
   type: varchar("type", { length: 50 }).notNull(),
   aliases: jsonb("aliases").$type<string[]>().default([]),
   attributes: jsonb("attributes").$type<Record<string, unknown>>().default({}),
+  // Graphiti-style: LLM-generated evolving summary rebuilt as entity is mentioned more
+  summary: text("summary"),
   mentionCount: integer("mention_count").default(1),
   firstSeen: timestamp("first_seen", { withTimezone: true }).defaultNow().notNull(),
   lastSeen: timestamp("last_seen", { withTimezone: true }).defaultNow().notNull(),

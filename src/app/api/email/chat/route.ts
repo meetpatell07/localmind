@@ -1,7 +1,9 @@
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import type { UIMessage } from "ai";
 import { chatModel } from "@/agent/ollama";
-import { emailTools } from "@/connectors/gmail-tools";
+import { emailTools } from "@/agent/tools";
+import { db } from "@/db";
+import { userProfile } from "@/db/schema";
 import { z } from "zod";
 
 const RequestSchema = z.object({
@@ -17,7 +19,26 @@ const RequestSchema = z.object({
   ),
 });
 
-const EMAIL_SYSTEM_PROMPT = `You are LocalMind's Email Assistant — an AI that can read, search, and act on the user's Gmail inbox.
+async function buildEmailSystemPrompt(): Promise<string> {
+  const rows = await db.select().from(userProfile).limit(1);
+  const u = rows[0];
+
+  const identityLines: string[] = [];
+  if (u?.displayName)  identityLines.push(`- Name: ${u.displayName}`);
+  if (u?.email)        identityLines.push(`- Email: ${u.email}`);
+  if (u?.linkedin)     identityLines.push(`- LinkedIn: ${u.linkedin}`);
+  if (u?.portfolioWeb) identityLines.push(`- Portfolio: ${u.portfolioWeb}`);
+  if (u?.instagram)    identityLines.push(`- Instagram: ${u.instagram}`);
+  if (u?.xHandle)      identityLines.push(`- X (Twitter): ${u.xHandle}`);
+  if (u?.facebook)     identityLines.push(`- Facebook: ${u.facebook}`);
+  if (u?.phone)        identityLines.push(`- Phone: ${u.phone}`);
+  if (u?.address)      identityLines.push(`- Address: ${u.address}`);
+
+  const identitySection = identityLines.length > 0
+    ? `\n\n## User Profile (treat as ground truth)\n${identityLines.join("\n")}`
+    : "";
+
+  return `You are LocalMind's Email Assistant — an AI that can read, search, and act on the user's Gmail inbox.${identitySection}
 
 You have access to the following tools:
 - list_emails: List recent emails from the inbox
@@ -31,7 +52,8 @@ Guidelines:
 - When asked to create a task from an email, extract a clear actionable title and relevant details, set priority based on urgency.
 - If Gmail is not connected, tell the user to connect it in Settings.
 - Be concise — summarize long emails, highlight what matters.
-- Respect the user's privacy — don't volunteer email contents unless asked.`;
+- If asked about the user's profile info (name, email, LinkedIn, etc.), answer from the User Profile section above — never say you don't know.`;
+}
 
 export async function POST(req: Request): Promise<Response> {
   let body: unknown;
@@ -51,16 +73,20 @@ export async function POST(req: Request): Promise<Response> {
 
   const { messages } = parsed.data;
 
-  const modelMessages = await convertToModelMessages(messages as UIMessage[]);
+  const [systemPrompt, modelMessages] = await Promise.all([
+    buildEmailSystemPrompt(),
+    convertToModelMessages(messages as UIMessage[]),
+  ]);
 
   const result = streamText({
     model: chatModel,
-    system: EMAIL_SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: modelMessages,
     tools: emailTools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
     temperature: 0.3,
   });
 
-  return result.toUIMessageStreamResponse();
+  const response = result.toUIMessageStreamResponse();
+  return new Response(response.body, { status: response.status, headers: response.headers });
 }

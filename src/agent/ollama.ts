@@ -7,8 +7,9 @@ const ollamaProvider = createOpenAI({
   apiKey: "ollama", // required by the client, ignored by Ollama
 });
 
-export const chatModel = ollamaProvider(OLLAMA_MODEL);
-export const extractionModel = ollamaProvider(OLLAMA_MODEL);
+// Use .chat() to force /v1/chat/completions — Ollama doesn't support /v1/responses
+export const chatModel = ollamaProvider.chat(OLLAMA_MODEL);
+export const extractionModel = ollamaProvider.chat(OLLAMA_MODEL);
 
 export async function checkOllamaHealth(): Promise<boolean> {
   try {

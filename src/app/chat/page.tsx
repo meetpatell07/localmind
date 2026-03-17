@@ -40,7 +40,7 @@ export default function ChatPage() {
       .then((d: { sessionId?: string }) => {
         if (d.sessionId) sessionIdRef.current = d.sessionId;
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   async function checkOllama() {
@@ -64,7 +64,7 @@ export default function ChatPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId: sid }),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
   }, [messages.length]);

@@ -54,10 +54,12 @@ export const hot = new HotMemoryCache();
 
 // ── TTL Constants ─────────────────────────────────────────────────────────────
 export const HOT_TTL = {
-  PROFILE:  5 * 60 * 1_000,  // 5 min  — rebuilt every 50 interactions
-  ENTITIES: 2 * 60 * 1_000,  // 2 min  — changes on every extraction run
-  SESSIONS: 1 * 60 * 1_000,  // 1 min  — session list changes frequently
-  GRAPH:    3 * 60 * 1_000,  // 3 min  — graph topology changes slowly
+  PROFILE:       5 * 60 * 1_000,  // 5 min  — rebuilt every 50 interactions
+  ENTITIES:      2 * 60 * 1_000,  // 2 min  — changes on every extraction run
+  SESSIONS:      1 * 60 * 1_000,  // 1 min  — session list changes frequently
+  GRAPH:         3 * 60 * 1_000,  // 3 min  — graph topology changes slowly
+  USER_IDENTITY: 10 * 60 * 1_000, // 10 min — only changes when user edits Settings
+  RECALL_QUERY:  2 * 60 * 1_000,  // 2 min  — semantic search results (same query → same results)
 } as const;
 
 // ── Key helpers ───────────────────────────────────────────────────────────────
@@ -66,4 +68,6 @@ export const HOT_KEY = {
   profileFacts: () => "profile:facts",
   graphNodes:   () => "graph:nodes",
   entity:       (id: string) => `entity:${id}`,
+  userIdentity: () => "user:identity",
+  recallQuery:  (hash: string) => `recall:${hash}`,
 } as const;
