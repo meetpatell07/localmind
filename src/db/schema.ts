@@ -81,6 +81,7 @@ export const relationships = pgTable("relationships", {
   validUntil:     timestamp("valid_until", { withTimezone: true }),
   supersededById: uuid("superseded_by_id").references((): AnyPgColumn => relationships.id),
   decayScore:     real("decay_score").default(1.0).notNull(),
+  updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("rel_subject_idx").on(t.subjectId),
   index("rel_predicate_idx").on(t.predicate),
@@ -111,7 +112,8 @@ export const atomicFacts = pgTable("atomic_facts", {
   supersededById: uuid("superseded_by_id").references((): AnyPgColumn => atomicFacts.id),
   sourceConversationId: uuid("source_conversation_id").references(() => conversations.id),
   decayScore:     real("decay_score").default(1.0).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("fact_entity_idx").on(t.entityId),
   index("fact_active_idx").on(t.isActive),

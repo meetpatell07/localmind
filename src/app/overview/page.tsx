@@ -91,7 +91,7 @@ export default function OverviewPage() {
   const [activeTab, setActiveTab] = useState("all");
 
   return (
-    <div className="flex flex-col h-full w-full max-w-5xl mx-auto pt-4 pb-12 animate-fade-in">
+    <div className="flex flex-col h-full w-full max-w-5xl mx-auto px-4 md:px-8 pt-4 pb-12 overflow-y-auto animate-fade-in">
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>

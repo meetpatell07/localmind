@@ -3,7 +3,7 @@ import type { UIMessage } from "ai";
 import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recallFast, remember, createSession } from "@/memory";
-import { coreTools } from "@/agent/tools";
+import { coreTools, driveTools } from "@/agent/tools";
 import { z } from "zod";
 
 const RequestSchema = z.object({
@@ -76,7 +76,7 @@ export async function POST(req: Request): Promise<Response> {
     model: chatModel,
     system: systemPrompt,
     messages: modelMessages,
-    tools: coreTools,
+    tools: { ...coreTools, ...driveTools },
     stopWhen: stepCountIs(5), // allow up to 5 tool call → response cycles
     temperature: 0.7,
     onFinish: async ({ text }) => {

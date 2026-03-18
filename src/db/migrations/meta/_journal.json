@@ -43,6 +43,13 @@
       "when": 1773709695782,
       "tag": "0005_foamy_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773841437127,
+      "tag": "0006_melted_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

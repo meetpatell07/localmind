@@ -15,6 +15,7 @@ export interface GraphNode {
     aliases: string[];
     summary: string | null;
     isValueNode: boolean;
+    createdAt: string | null; // ISO — entity firstSeen, used for time-machine
   };
   position: { x: number; y: number };
   type: "entityNode" | "valueNode";
@@ -26,7 +27,7 @@ export interface GraphEdge {
   target: string;
   label: string;
   animated: boolean;
-  data: { confidence: number; factVersion: number };
+  data: { confidence: number; factVersion: number; validFrom: string | null };
 }
 
 export interface GraphPayload {
@@ -88,6 +89,7 @@ export async function GET() {
         attributes:   entities.attributes,
         aliases:      entities.aliases,
         summary:      entities.summary,
+        firstSeen:    entities.firstSeen,
       })
       .from(entities)
       .orderBy(desc(entities.decayScore), desc(entities.mentionCount))
@@ -103,13 +105,14 @@ export async function GET() {
     // All active relationships
     const relRows = await db
       .select({
-        id:            relationships.id,
-        subjectId:     relationships.subjectId,
-        predicate:     relationships.predicate,
+        id:             relationships.id,
+        subjectId:      relationships.subjectId,
+        predicate:      relationships.predicate,
         objectEntityId: relationships.objectEntityId,
-        objectValue:   relationships.objectValue,
-        confidence:    relationships.confidence,
-        factVersion:   relationships.factVersion,
+        objectValue:    relationships.objectValue,
+        confidence:     relationships.confidence,
+        factVersion:    relationships.factVersion,
+        validFrom:      relationships.validFrom,
       })
       .from(relationships)
       .where(eq(relationships.isActive, true))
@@ -128,6 +131,7 @@ export async function GET() {
         aliases:      (e.aliases     as string[]) ?? [],
         summary:      e.summary ?? null,
         isValueNode:  false,
+        createdAt:    e.firstSeen ? e.firstSeen.toISOString() : null,
       },
       position: { x: 0, y: 0 },
     }));
@@ -152,6 +156,7 @@ export async function GET() {
           data: {
             confidence:  rel.confidence  ?? 0.8,
             factVersion: rel.factVersion ?? 1,
+            validFrom:   rel.validFrom ? rel.validFrom.toISOString() : null,
           },
         });
       } else if (
@@ -179,6 +184,7 @@ export async function GET() {
               aliases:      [],
               summary:      null,
               isValueNode:  true,
+              createdAt:    rel.validFrom ? rel.validFrom.toISOString() : null,
             },
             position: { x: 0, y: 0 },
           });
@@ -194,6 +200,7 @@ export async function GET() {
             data: {
               confidence:  rel.confidence  ?? 0.8,
               factVersion: rel.factVersion ?? 1,
+              validFrom:   rel.validFrom ? rel.validFrom.toISOString() : null,
             },
           });
         }

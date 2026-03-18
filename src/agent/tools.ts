@@ -20,6 +20,7 @@ import { hot, HOT_KEY, HOT_TTL } from "@/memory/hot";
 import { getEntityContext, processExtractedEntities } from "@/memory/entity";
 import { extractEntitiesFromConversation } from "@/agent/extract";
 import { getAuthenticatedClient } from "@/connectors/google-auth";
+import { listDriveFiles, searchDriveFiles, getDriveFileContent } from "@/connectors/google-drive";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -684,5 +685,74 @@ The tool saves the draft and returns a preview so the user can confirm.
   }),
 };
 
+// ── Drive tools ────────────────────────────────────────────────────────────────
+
+export const driveTools = {
+
+  list_drive_files: tool({
+    description:
+      "List files from Google Drive. Use when the user asks to see their Drive files, find recent documents, or browse their Drive.",
+    inputSchema: z.object({
+      maxResults: z.number().min(1).max(20).default(10),
+      mimeType:   z.string().optional().describe("Filter by MIME type, e.g. 'application/vnd.google-apps.document' for Google Docs"),
+      starred:    z.boolean().optional().describe("Only show starred files"),
+      query:      z.string().optional().describe("Search query for file names or content"),
+    }),
+    execute: async (args: { maxResults: number; mimeType?: string; starred?: boolean; query?: string }) => {
+      try {
+        if (args.query) {
+          const result = await searchDriveFiles(args.query, args.maxResults);
+          if (result.error) return { error: result.error };
+          return { files: result.files, total: result.files.length };
+        }
+        const result = await listDriveFiles({
+          maxResults: args.maxResults,
+          mimeType:   args.mimeType,
+          starred:    args.starred,
+        });
+        if (result.error) return { error: result.error };
+        return { files: result.files, total: result.files.length };
+      } catch (err) {
+        return { error: `Drive error: ${String(err)}` };
+      }
+    },
+  }),
+
+  search_drive_files: tool({
+    description:
+      "Search Google Drive files by content or name. Use Gmail-style queries or plain text.",
+    inputSchema: z.object({
+      query:      z.string().min(2).describe("Search query — searches file names and content"),
+      maxResults: z.number().min(1).max(20).default(10),
+    }),
+    execute: async (args: { query: string; maxResults: number }) => {
+      try {
+        const result = await searchDriveFiles(args.query, args.maxResults);
+        if (result.error) return { error: result.error };
+        return { files: result.files, total: result.files.length, query: args.query };
+      } catch (err) {
+        return { error: `Drive error: ${String(err)}` };
+      }
+    },
+  }),
+
+  get_drive_file: tool({
+    description:
+      "Get the content of a specific Google Drive file. Returns text content for Docs/Sheets/text files, metadata only for binary files.",
+    inputSchema: z.object({
+      fileId: z.string().describe("Google Drive file ID from list_drive_files or search_drive_files"),
+    }),
+    execute: async (args: { fileId: string }) => {
+      try {
+        const result = await getDriveFileContent(args.fileId);
+        if (result.error) return { error: result.error };
+        return result;
+      } catch (err) {
+        return { error: `Drive error: ${String(err)}` };
+      }
+    },
+  }),
+};
+
 // ── Full tool set ──────────────────────────────────────────────────────────────
-export const allTools = { ...coreTools, ...emailTools };
+export const allTools = { ...coreTools, ...emailTools, ...driveTools };

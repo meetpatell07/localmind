@@ -15,7 +15,7 @@ export async function GET(): Promise<Response> {
       connectors: {
         google: {
           ...google,
-          services: google.connected ? ["gmail", "calendar"] : [],
+          services: google.connected ? ["gmail", "calendar", "drive"] : [],
         },
         notion,
         calendar,

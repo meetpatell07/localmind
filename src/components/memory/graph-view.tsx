@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,41 +8,35 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  BackgroundVariant,
   type Node,
   type Edge,
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Button } from "@/components/ui/button";
-import { Cancel01Icon } from "hugeicons-react";
+import { cn } from "@/lib/utils";
 import type { GraphPayload } from "@/app/api/memory/graph/route";
 
-// ── Colour palette by entity type ─────────────────────────────────────────────
-const TYPE_COLORS: Record<
-  string,
-  { bg: string; border: string; text: string }
-> = {
-  person: { bg: "#0f2d1a", border: "#22c55e", text: "#4ade80" },
-  project: { bg: "#1e0a2e", border: "#a855f7", text: "#c084fc" },
-  technology: { bg: "#0a1a2e", border: "#3b82f6", text: "#60a5fa" },
-  organization: { bg: "#1a0a0a", border: "#ef4444", text: "#f87171" },
-  preference: { bg: "#1a1200", border: "#f59e0b", text: "#fbbf24" },
-  concept: { bg: "#0a1a1a", border: "#06b6d4", text: "#22d3ee" },
-  event: { bg: "#1a0a1a", border: "#ec4899", text: "#f472b6" },
-  value: { bg: "#0d0d14", border: "#334155", text: "#64748b" },
-  other: { bg: "#111320", border: "#475569", text: "#94a3b8" },
+// ── Self-contained dark canvas palette ────────────────────────────────────────
+const CANVAS_BG   = "#06080f";
+const PANEL_BG    = "#0d1220";
+const PANEL_BORD  = "#1e2a3a";
+const TEXT_DIM    = "#4b5c72";
+const TEXT_MID    = "#7a90a8";
+const TEXT_BRIGHT = "#c8d8e8";
+
+const TYPE_PALETTE: Record<string, { ring: string; glow: string; badge: string; bg: string }> = {
+  person:       { ring: "#22c55e", glow: "#22c55e33", badge: "#052e16", bg: "#021a0d" },
+  project:      { ring: "#a855f7", glow: "#a855f733", badge: "#2e1065", bg: "#1a0635" },
+  technology:   { ring: "#3b82f6", glow: "#3b82f633", badge: "#1e3a8a", bg: "#0a1a40" },
+  organization: { ring: "#ef4444", glow: "#ef444433", badge: "#7f1d1d", bg: "#3b0d0d" },
+  preference:   { ring: "#f59e0b", glow: "#f59e0b33", badge: "#78350f", bg: "#3a1a04" },
+  concept:      { ring: "#06b6d4", glow: "#06b6d433", badge: "#164e63", bg: "#042a33" },
+  event:        { ring: "#ec4899", glow: "#ec489933", badge: "#831843", bg: "#40091d" },
+  other:        { ring: "#64748b", glow: "#64748b22", badge: "#1e293b", bg: "#0f172a" },
 };
 
-const ALL_ENTITY_TYPES = [
-  "person",
-  "project",
-  "technology",
-  "organization",
-  "preference",
-  "concept",
-  "event",
-  "other",
-];
+const ALL_TYPES = ["person","project","technology","organization","preference","concept","event","other"];
 
 type NodeData = {
   label: string;
@@ -53,69 +47,84 @@ type NodeData = {
   aliases: string[];
   summary: string | null;
   isValueNode: boolean;
+  createdAt: string | null;
 };
 
-// ── Custom entity node ─────────────────────────────────────────────────────────
+// ── Entity node ───────────────────────────────────────────────────────────────
 function EntityNode({ data, selected }: NodeProps) {
   const d = data as NodeData;
-  const colors = TYPE_COLORS[d.type] ?? TYPE_COLORS.other;
-  const decay = d.decayScore ?? 1.0;
-  const opacity = Math.max(0.25, decay);
+  const pal = TYPE_PALETTE[d.type] ?? TYPE_PALETTE.other;
+  const decay = d.decayScore ?? 1;
   const decayPct = Math.round(decay * 100);
-  const isSharp = decay >= 0.7;
   const isFading = decay < 0.35;
 
   return (
     <div
-      className="px-3 py-2 rounded-sm text-sm max-w-[140px] text-center cursor-pointer"
       style={{
-        background: colors.bg,
-        border: `1px solid ${selected ? colors.text : colors.border}`,
-        color: colors.text,
-        boxShadow: selected
-          ? `0 0 16px ${colors.border}88`
-          : `0 0 8px ${colors.border}${isSharp ? "44" : "11"}`,
-        opacity,
-        transition: "box-shadow 0.15s, border-color 0.15s",
+        background: pal.bg,
+        border: `1.5px solid ${selected ? pal.ring : pal.ring + "88"}`,
+        borderRadius: 8,
+        padding: "8px 12px",
+        minWidth: 110,
+        maxWidth: 150,
+        boxShadow: selected ? `0 0 18px ${pal.glow}, 0 0 6px ${pal.ring}44` : `0 0 8px ${pal.glow}`,
+        opacity: Math.max(0.3, decay),
+        transition: "box-shadow 0.2s, border-color 0.2s, opacity 0.4s",
+        cursor: "pointer",
+        textAlign: "center",
       }}
     >
-      <div className="font-semibold leading-tight truncate">{d.label}</div>
-      <div className="text-sm opacity-40 mt-0.5 uppercase tracking-widest">
-        {d.type} · {d.mentionCount}×
+      <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_BRIGHT, lineHeight: 1.3, wordBreak: "break-word" }}>
+        {d.label}
       </div>
-      <div
-        className="mt-1.5 h-0.5 w-full rounded-full overflow-hidden"
-        style={{ background: "rgba(255,255,255,0.08)" }}
-      >
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${decayPct}%`,
-            background: isFading
-              ? "#ef4444"
-              : isSharp
-                ? colors.border
-                : "#f59e0b",
-          }}
-        />
+      <div style={{
+        display: "inline-block", marginTop: 4, padding: "1px 6px",
+        borderRadius: 99, fontSize: 9, fontWeight: 700,
+        textTransform: "uppercase", letterSpacing: "0.08em",
+        background: pal.badge, color: pal.ring,
+      }}>
+        {d.type}
       </div>
+      {/* Decay bar */}
+      <div style={{
+        marginTop: 5, height: 2, borderRadius: 99,
+        background: "rgba(255,255,255,0.06)",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          height: "100%", borderRadius: 99,
+          width: `${decayPct}%`,
+          background: isFading ? "#ef4444" : pal.ring,
+          transition: "width 0.5s",
+        }} />
+      </div>
+      {d.mentionCount > 1 && (
+        <div style={{ marginTop: 3, fontSize: 9, color: TEXT_DIM }}>
+          {d.mentionCount}× mentioned
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Value leaf node — compact pill ─────────────────────────────────────────────
+// ── Value leaf node ───────────────────────────────────────────────────────────
 function ValueNode({ data, selected }: NodeProps) {
   const d = data as NodeData;
   return (
-    <div
-      className="px-2 py-1 rounded-full text-sm max-w-[120px] truncate cursor-pointer"
-      style={{
-        background: selected ? "#1e2030" : "#0d0d14",
-        border: `1px solid ${selected ? "#475569" : "#1e2535"}`,
-        color: "#4b5563",
-        boxShadow: selected ? "0 0 8px #33415544" : "none",
-      }}
-    >
+    <div style={{
+      background: selected ? "#151f2e" : "#0d1420",
+      border: `1px solid ${selected ? "#334155" : "#1e293b"}`,
+      borderRadius: 99,
+      padding: "3px 10px",
+      maxWidth: 130,
+      fontSize: 10,
+      color: selected ? "#94a3b8" : "#4b5c72",
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      transition: "background 0.15s, border-color 0.15s",
+    }}>
       {d.label}
     </div>
   );
@@ -123,12 +132,9 @@ function ValueNode({ data, selected }: NodeProps) {
 
 const NODE_TYPES = { entityNode: EntityNode, valueNode: ValueNode };
 
-// ── Node detail panel ──────────────────────────────────────────────────────────
-function NodeDetailPanel({
-  nodeId,
-  allNodes,
-  allEdges,
-  onClose,
+// ── Node detail side panel ────────────────────────────────────────────────────
+function DetailPanel({
+  nodeId, allNodes, allEdges, onClose,
 }: {
   nodeId: string;
   allNodes: Node[];
@@ -137,255 +143,390 @@ function NodeDetailPanel({
 }) {
   const node = allNodes.find((n) => n.id === nodeId);
   if (!node) return null;
-
   const d = node.data as NodeData;
-  const colors = TYPE_COLORS[d.type] ?? TYPE_COLORS.other;
+  const pal = TYPE_PALETTE[d.type] ?? TYPE_PALETTE.other;
 
   const outgoing = allEdges.filter((e) => e.source === nodeId);
   const incoming = allEdges.filter((e) => e.target === nodeId);
 
-  function getLabel(id: string) {
-    return allNodes.find((n) => n.id === id)?.data
-      ? (allNodes.find((n) => n.id === id)!.data as NodeData).label
-      : id;
+  function nodeLabel(id: string) {
+    const n = allNodes.find((x) => x.id === id);
+    return n ? (n.data as NodeData).label : id;
   }
 
   const attrs = Object.entries(d.attributes ?? {}).filter(([, v]) => v);
+  const decay = d.decayScore ?? 1;
+  const decayPct = Math.round(decay * 100);
+  const isFading = decay < 0.35;
+  const decayColor = isFading ? "#ef4444" : decay < 0.7 ? "#f59e0b" : pal.ring;
+  const decayLabel = isFading ? "Fading" : decay < 0.7 ? "Weakening" : "Strong";
 
   return (
-    <div
-      className="absolute right-3 top-3 bottom-3 w-60 z-20 flex flex-col overflow-hidden rounded-sm"
-      style={{
-        background: "var(--surface-raised)",
-        border: "1px solid var(--line)",
-      }}
-    >
+    <div style={{
+      position: "absolute", right: 12, top: 12, bottom: 12, width: 260,
+      zIndex: 20, display: "flex", flexDirection: "column",
+      background: PANEL_BG, border: `1px solid ${PANEL_BORD}`,
+      borderRadius: 10, overflow: "hidden",
+    }}>
       {/* Header */}
-      <div
-        className="flex items-start justify-between px-3 pt-3 pb-2"
-        style={{ borderBottom: "1px solid var(--line)" }}
-      >
-        <div className="flex-1 min-w-0">
-          <div
-            className="text-sm font-semibold truncate"
-            style={{ color: colors.text }}
-          >
+      <div style={{
+        padding: "12px 14px 10px", borderBottom: `1px solid ${PANEL_BORD}`,
+        display: "flex", alignItems: "flex-start", gap: 10,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: pal.ring, wordBreak: "break-word", lineHeight: 1.3 }}>
             {d.label}
           </div>
-          <div className="text-sm opacity-40 uppercase tracking-widest mt-0.5">
-            {d.type}
-            {!d.isValueNode && ` · ${d.mentionCount}×`}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+            <span style={{
+              padding: "1px 7px", borderRadius: 99, fontSize: 9,
+              fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em",
+              background: pal.badge, color: pal.ring,
+            }}>
+              {d.type}
+            </span>
+            <span style={{ fontSize: 10, color: TEXT_DIM }}>{d.mentionCount}× mentioned</span>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-xs"
+        <button
           onClick={onClose}
-          className="shrink-0 ml-2 opacity-30 hover:opacity-70 transition-opacity"
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: TEXT_DIM, fontSize: 16, lineHeight: 1, padding: 2,
+            flexShrink: 0,
+          }}
+          aria-label="Close"
         >
-          <Cancel01Icon className="h-3.5 w-3.5" />
-        </Button>
+          ×
+        </button>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-        {/* Summary */}
-        {d.summary && (
-          <div>
-            <div className="text-sm opacity-30 uppercase tracking-widest mb-1">
-              summary
-            </div>
-            <p
-              className="text-sm leading-relaxed"
-              style={{ color: "hsl(210 18% 65%)" }}
-            >
-              {d.summary}
-            </p>
+      {/* Memory strength */}
+      <div style={{ padding: "10px 14px", borderBottom: `1px solid ${PANEL_BORD}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: TEXT_DIM }}>
+            Memory Strength
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: decayColor }}>{decayLabel} · {decayPct}%</span>
+        </div>
+        <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+          <div style={{
+            height: "100%", borderRadius: 99, width: `${decayPct}%`,
+            background: decayColor, transition: "width 0.5s",
+          }} />
+        </div>
+        {d.createdAt && (
+          <div style={{ marginTop: 5, fontSize: 9, color: TEXT_DIM }}>
+            First seen {new Date(d.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
           </div>
         )}
+      </div>
 
-        {/* Aliases */}
+      {/* Body */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "10px 14px" }}>
+        {d.summary && (
+          <Section label="Summary">
+            <p style={{ fontSize: 11, lineHeight: 1.6, color: TEXT_MID }}>{d.summary}</p>
+          </Section>
+        )}
+
         {d.aliases?.length > 0 && (
-          <div>
-            <div className="text-sm opacity-30 uppercase tracking-widest mb-1">
-              also known as
-            </div>
-            <div className="flex flex-wrap gap-1">
+          <Section label="Also known as">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {d.aliases.map((a) => (
-                <span
-                  key={a}
-                  className="text-sm px-1.5 py-0.5 rounded-sm"
-                  style={{
-                    background: `${colors.bg}`,
-                    border: `1px solid ${colors.border}33`,
-                    color: colors.text,
-                  }}
-                >
+                <span key={a} style={{
+                  padding: "1px 7px", borderRadius: 99, fontSize: 10,
+                  background: pal.badge, color: pal.ring, border: `1px solid ${pal.ring}33`,
+                }}>
                   {a}
                 </span>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* Attributes */}
         {attrs.length > 0 && (
-          <div>
-            <div className="text-sm opacity-30 uppercase tracking-widest mb-1">
-              attributes
-            </div>
-            <div className="space-y-1">
-              {attrs.map(([k, v]) => (
-                <div key={k} className="flex gap-1.5 text-sm">
-                  <span className="opacity-40 shrink-0">{k}</span>
-                  <span
-                    className="truncate"
-                    style={{ color: "hsl(210 18% 70%)" }}
-                  >
-                    {v}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Section label="Attributes">
+            {attrs.map(([k, v]) => (
+              <div key={k} style={{ display: "flex", gap: 6, fontSize: 11, marginBottom: 3 }}>
+                <span style={{ color: TEXT_DIM, flexShrink: 0 }}>{k}</span>
+                <span style={{ color: TEXT_MID, wordBreak: "break-word" }}>{String(v)}</span>
+              </div>
+            ))}
+          </Section>
         )}
 
-        {/* Outgoing relationships */}
         {outgoing.length > 0 && (
-          <div>
-            <div className="text-sm opacity-30 uppercase tracking-widest mb-1">
-              relationships →
-            </div>
-            <div className="space-y-1">
-              {outgoing.map((e) => (
-                <div
-                  key={e.id}
-                  className="flex gap-1.5 text-sm items-start"
-                >
-                  <span className="opacity-40 shrink-0">{String(e.label)}</span>
-                  <span className="truncate" style={{ color: colors.text }}>
-                    {getLabel(e.target)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Section label={`→ Outgoing (${outgoing.length})`}>
+            {outgoing.map((e) => (
+              <RelRow key={e.id} label={String(e.label)} target={nodeLabel(e.target)} color={pal.ring} />
+            ))}
+          </Section>
         )}
 
-        {/* Incoming relationships */}
         {incoming.length > 0 && (
-          <div>
-            <div className="text-sm opacity-30 uppercase tracking-widest mb-1">
-              ← referenced by
-            </div>
-            <div className="space-y-1">
-              {incoming.map((e) => (
-                <div
-                  key={e.id}
-                  className="flex gap-1.5 text-sm items-start"
-                >
-                  <span
-                    className="truncate"
-                    style={{ color: "hsl(210 18% 70%)" }}
-                  >
-                    {getLabel(e.source)}
-                  </span>
-                  <span className="opacity-40 shrink-0">{String(e.label)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Section label={`← Incoming (${incoming.length})`}>
+            {incoming.map((e) => (
+              <RelRow key={e.id} label={String(e.label)} target={nodeLabel(e.source)} color={TEXT_MID} />
+            ))}
+          </Section>
         )}
 
-        {outgoing.length === 0 &&
-          incoming.length === 0 &&
-          attrs.length === 0 && (
-            <div className="text-sm opacity-25">
-              no details yet
-            </div>
-          )}
+        {!d.summary && attrs.length === 0 && outgoing.length === 0 && incoming.length === 0 && (
+          <p style={{ fontSize: 11, color: TEXT_DIM, fontStyle: "italic" }}>No details yet — keep chatting!</p>
+        )}
       </div>
     </div>
   );
 }
 
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{
+        fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+        letterSpacing: "0.1em", color: TEXT_DIM, marginBottom: 5,
+      }}>
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function RelRow({ label, target, color }: { label: string; target: string; color: string }) {
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "flex-start", fontSize: 11, marginBottom: 3 }}>
+      <span style={{ color: TEXT_DIM, flexShrink: 0, fontStyle: "italic" }}>{label}</span>
+      <span style={{ color, wordBreak: "break-word" }}>{target}</span>
+    </div>
+  );
+}
+
 // ── Type filter bar ────────────────────────────────────────────────────────────
-function TypeFilterBar({
-  activeTypes,
-  onChange,
+function TypeFilter({
+  activeTypes, counts, onChange,
 }: {
   activeTypes: Set<string>;
-  onChange: (t: Set<string>) => void;
+  counts: Record<string, number>;
+  onChange: (s: Set<string>) => void;
 }) {
-  function toggle(type: string) {
+  function toggle(t: string) {
     const next = new Set(activeTypes);
-    if (next.has(type)) next.delete(type);
-    else next.add(type);
+    if (next.has(t)) next.delete(t); else next.add(t);
     onChange(next);
   }
 
   return (
-    <div
-      className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-2 py-1.5 rounded-sm"
-      style={{
-        background: "var(--surface-raised)",
-        border: "1px solid var(--line)",
-      }}
-    >
-      {ALL_ENTITY_TYPES.map((type) => {
-        const colors = TYPE_COLORS[type] ?? TYPE_COLORS.other;
-        const isActive = activeTypes.size === 0 || activeTypes.has(type);
+    <div style={{
+      position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
+      zIndex: 10, display: "flex", alignItems: "center", gap: 4,
+      padding: "6px 10px", borderRadius: 8,
+      background: PANEL_BG, border: `1px solid ${PANEL_BORD}`,
+      flexWrap: "wrap", justifyContent: "center", maxWidth: "70vw",
+    }}>
+      {ALL_TYPES.filter((t) => (counts[t] ?? 0) > 0).map((t) => {
+        const pal = TYPE_PALETTE[t] ?? TYPE_PALETTE.other;
+        const active = activeTypes.size === 0 || activeTypes.has(t);
         return (
-          <Button
-            key={type}
-            variant="ghost"
-            size="xs"
-            onClick={() => toggle(type)}
-            className="uppercase tracking-widest"
+          <button
+            key={t}
+            onClick={() => toggle(t)}
             style={{
-              background: isActive ? colors.bg : "transparent",
-              border: `1px solid ${isActive ? colors.border : "transparent"}`,
-              color: isActive ? colors.text : "rgba(255,255,255,0.2)",
+              padding: "2px 9px", borderRadius: 99, fontSize: 9,
+              fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em",
+              cursor: "pointer",
+              background: active ? pal.badge : "transparent",
+              border: `1px solid ${active ? pal.ring + "88" : PANEL_BORD}`,
+              color: active ? pal.ring : TEXT_DIM,
+              transition: "all 0.15s",
             }}
           >
-            {type}
-          </Button>
+            {t} <span style={{ opacity: 0.6 }}>{counts[t]}</span>
+          </button>
         );
       })}
       {activeTypes.size > 0 && (
-        <Button
-          variant="ghost"
-          size="icon-xs"
+        <button
           onClick={() => onChange(new Set())}
-          className="opacity-30 hover:opacity-60 ml-1 transition-opacity"
+          style={{
+            padding: "2px 8px", borderRadius: 99, fontSize: 9,
+            background: "none", border: `1px solid ${PANEL_BORD}`,
+            color: TEXT_DIM, cursor: "pointer",
+          }}
         >
-          ×
-        </Button>
+          clear ×
+        </button>
       )}
+    </div>
+  );
+}
+
+// ── Search bar ────────────────────────────────────────────────────────────────
+function SearchBar({
+  value, onChange, onClear,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div style={{
+      position: "absolute", top: 12, left: 12, zIndex: 10,
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "5px 10px", borderRadius: 8,
+      background: PANEL_BG, border: `1px solid ${PANEL_BORD}`,
+      width: 180,
+    }}>
+      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke={TEXT_DIM} strokeWidth={2}>
+        <circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-5-5" />
+      </svg>
+      <input
+        ref={ref}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search nodes…"
+        style={{
+          background: "none", border: "none", outline: "none",
+          color: TEXT_BRIGHT, fontSize: 11, width: "100%",
+        }}
+      />
+      {value && (
+        <button onClick={onClear} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+      )}
+    </div>
+  );
+}
+
+// ── Stats bar ────────────────────────────────────────────────────────────────
+function StatsBar({
+  nodeCount, edgeCount, visibleCount, onRefresh,
+}: {
+  nodeCount: number; edgeCount: number; visibleCount: number; onRefresh: () => void;
+}) {
+  return (
+    <div style={{
+      position: "absolute", top: 12, right: 12, zIndex: 10,
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "5px 12px", borderRadius: 8,
+      background: PANEL_BG, border: `1px solid ${PANEL_BORD}`,
+      fontSize: 11,
+    }}>
+      <span style={{ color: "#f59e0b", fontWeight: 600 }}>{visibleCount}</span>
+      <span style={{ color: TEXT_DIM }}>/ {nodeCount} nodes</span>
+      <span style={{ color: PANEL_BORD }}>·</span>
+      <span style={{ color: TEXT_DIM }}>{edgeCount} edges</span>
+      <button
+        onClick={onRefresh}
+        style={{
+          background: "none", border: "none", color: TEXT_DIM,
+          cursor: "pointer", fontSize: 14, lineHeight: 1, marginLeft: 2,
+          transition: "color 0.15s",
+        }}
+        title="Refresh graph"
+      >
+        ↺
+      </button>
+    </div>
+  );
+}
+
+// ── Time machine slider ───────────────────────────────────────────────────────
+function TimeMachineSlider({
+  value, min, max, visibleCount, totalCount, onChange,
+}: {
+  value: number; min: number; max: number;
+  visibleCount: number; totalCount: number;
+  onChange: (v: number) => void;
+}) {
+  const isLive = value >= max - 60_000;
+  const pct = max === min ? 100 : ((value - min) / (max - min)) * 100;
+  const label = isLive
+    ? "Live"
+    : new Date(value).toLocaleDateString([], {
+        month: "short", day: "numeric", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+
+  return (
+    <div style={{
+      position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
+      zIndex: 10, padding: "8px 14px",
+      background: PANEL_BG, border: `1px solid ${PANEL_BORD}`,
+      borderRadius: 8, minWidth: 280, maxWidth: "clamp(280px, 48vw, 480px)", width: "100%",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: TEXT_DIM }}>
+            Time Machine
+          </span>
+          {!isLive && (
+            <span style={{ fontSize: 9, color: TEXT_DIM }}>
+              · {visibleCount}/{totalCount} nodes
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            color: isLive ? "#22c55e" : "#f59e0b",
+          }}>
+            {label}
+          </span>
+          {isLive && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />}
+          {!isLive && (
+            <button
+              onClick={() => onChange(max)}
+              style={{
+                padding: "1px 6px", borderRadius: 4, fontSize: 9,
+                background: "none", border: `1px solid ${PANEL_BORD}`,
+                color: TEXT_DIM, cursor: "pointer",
+              }}
+            >
+              ↺ live
+            </button>
+          )}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 9, color: TEXT_DIM, flexShrink: 0 }}>
+          {new Date(min).toLocaleDateString([], { month: "short", year: "2-digit" })}
+        </span>
+        <div style={{ flex: 1, position: "relative" }}>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            value={value}
+            step={15 * 60 * 1000}
+            onChange={(e) => onChange(Number(e.target.value))}
+            style={{
+              width: "100%", cursor: "pointer", appearance: "none",
+              height: 3, borderRadius: 99, outline: "none",
+              background: `linear-gradient(to right, #f59e0b ${pct}%, rgba(255,255,255,0.08) ${pct}%)`,
+            }}
+          />
+        </div>
+        <span style={{ fontSize: 9, color: TEXT_DIM, flexShrink: 0 }}>now</span>
+      </div>
     </div>
   );
 }
 
 // ── Legend ────────────────────────────────────────────────────────────────────
 function Legend() {
-  const entries = Object.entries(TYPE_COLORS).filter(
-    ([k]) => k !== "value" && k !== "other",
-  );
+  const entries = Object.entries(TYPE_PALETTE).filter(([k]) => k !== "other");
   return (
-    <div
-      className="absolute bottom-4 left-4 z-10 p-3 rounded-sm text-sm space-y-1"
-      style={{
-        background: "var(--surface-raised)",
-        border: "1px solid var(--line)",
-      }}
-    >
-      {entries.map(([type, colors]) => (
-        <div key={type} className="flex items-center gap-2">
-          <span
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ background: colors.border }}
-          />
-          <span style={{ color: colors.text }}>{type}</span>
+    <div style={{
+      position: "absolute", bottom: 76, left: 12, zIndex: 10,
+      padding: "8px 12px", borderRadius: 8,
+      background: PANEL_BG, border: `1px solid ${PANEL_BORD}`,
+    }}>
+      {entries.map(([type, pal]) => (
+        <div key={type} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: pal.ring, flexShrink: 0 }} />
+          <span style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: pal.ring }}>{type}</span>
         </div>
       ))}
     </div>
@@ -398,14 +539,18 @@ export function GraphView() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nodeCount, setNodeCount] = useState(0);
-  const [edgeCount, setEdgeCount] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set());
-
-  // All raw nodes/edges — used for filtering without re-fetching
   const [rawNodes, setRawNodes] = useState<Node[]>([]);
   const [rawEdges, setRawEdges] = useState<Edge[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  // Time machine
+  const nowMs = Date.now();
+  const [timeRange, setTimeRange] = useState({ min: nowMs - 30 * 86400_000, max: nowMs });
+  const [sliderMs, setSliderMs] = useState(nowMs);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -415,36 +560,56 @@ export function GraphView() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as GraphPayload;
 
+      // Map nodes
       const mappedNodes: Node[] = data.nodes.map((n) => ({
-        id: n.id,
-        type: n.type,
+        id:       n.id,
+        type:     n.type,
         position: n.position,
-        data: n.data,
+        data:     n.data,
       }));
 
-      const mappedEdges: Edge[] = data.edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-        animated: e.animated,
-        style: {
-          stroke: (e.data.confidence ?? 0.8) >= 0.9 ? "#4ade8055" : "#33415555",
-          strokeWidth: (e.data.confidence ?? 0.8) >= 0.9 ? 1.5 : 1,
-        },
-        labelStyle: {
-          fill: "#64748b",
-          fontSize: 9,
-          fontFamily: "monospace",
-        },
-        labelBgStyle: { fill: "var(--navy)", fillOpacity: 0.9 },
-        data: e.data,
-      }));
+      // Map edges with visible colors
+      const mappedEdges: Edge[] = data.edges.map((e) => {
+        const conf = e.data.confidence ?? 0.8;
+        const srcData = data.nodes.find((n) => n.id === e.source)?.data;
+        const pal = srcData ? (TYPE_PALETTE[srcData.type] ?? TYPE_PALETTE.other) : TYPE_PALETTE.other;
+        return {
+          id:       e.id,
+          source:   e.source,
+          target:   e.target,
+          label:    e.label,
+          animated: conf >= 0.95,
+          style: {
+            stroke:      conf >= 0.9 ? pal.ring + "99" : "#334155",
+            strokeWidth: conf >= 0.9 ? 1.5 : 1,
+          },
+          labelStyle: { fill: "#4b5c72", fontSize: 9, fontFamily: "monospace" },
+          labelBgStyle: { fill: CANVAS_BG, fillOpacity: 0.85 },
+          data: e.data,
+        };
+      });
 
       setRawNodes(mappedNodes);
       setRawEdges(mappedEdges);
-      setNodeCount(data.nodes.length);
-      setEdgeCount(data.edges.length);
+
+      // Compute type counts
+      const counts: Record<string, number> = {};
+      data.nodes.forEach((n) => {
+        if (!n.data.isValueNode) {
+          counts[n.data.type] = (counts[n.data.type] ?? 0) + 1;
+        }
+      });
+      setTypeCounts(counts);
+
+      // Time range
+      const tss = data.nodes
+        .map((n) => n.data.createdAt ? new Date(n.data.createdAt).getTime() : null)
+        .filter((t): t is number => t !== null && !isNaN(t));
+      const now = Date.now();
+      if (tss.length > 0) {
+        setTimeRange({ min: Math.min(...tss), max: now });
+      }
+      setSliderMs(now);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load graph");
     } finally {
@@ -452,99 +617,164 @@ export function GraphView() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  // Apply type filter whenever rawNodes/activeTypes change
+  // ── Combined filter: type + time + search ─────────────────────────────────
   useEffect(() => {
-    if (activeTypes.size === 0) {
-      setNodes(rawNodes);
-      setEdges(rawEdges);
-      return;
-    }
-    const visibleIds = new Set(
-      rawNodes
-        .filter((n) => {
-          const type = (n.data as NodeData).type;
-          return activeTypes.has(type) || type === "value";
+    const isTimeMachine = sliderMs < timeRange.max - 60_000;
+    const FADE_WINDOW = 30 * 86400_000;
+
+    // Step 1: time filter
+    let vNodes = isTimeMachine
+      ? rawNodes
+          .filter((n) => {
+            const d = n.data as NodeData;
+            if (!d.createdAt) return true;
+            return new Date(d.createdAt).getTime() <= sliderMs;
+          })
+          .map((n) => {
+            const d = n.data as NodeData;
+            if (!d.createdAt) return n;
+            const age = sliderMs - new Date(d.createdAt).getTime();
+            const factor = Math.min(1, age / FADE_WINDOW);
+            return {
+              ...n,
+              style: { opacity: Math.max(0.3, (d.decayScore ?? 1) * (0.3 + 0.7 * factor)) },
+            };
+          })
+      : rawNodes;
+
+    let vEdges = isTimeMachine
+      ? rawEdges.filter((e) => {
+          const vf = e.data?.validFrom as string | null | undefined;
+          if (vf && new Date(vf).getTime() > sliderMs) return false;
+          return true;
         })
-        .map((n) => n.id),
-    );
-    setNodes(rawNodes.filter((n) => visibleIds.has(n.id)));
-    setEdges(
-      rawEdges.filter(
-        (e) => visibleIds.has(e.source) && visibleIds.has(e.target),
-      ),
-    );
-  }, [rawNodes, rawEdges, activeTypes, setNodes, setEdges]);
+      : rawEdges;
 
+    const nodeIdSet = new Set(vNodes.map((n) => n.id));
+    vEdges = vEdges.filter((e) => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
+
+    // Step 2: type filter
+    if (activeTypes.size > 0) {
+      const kept = new Set(
+        vNodes
+          .filter((n) => {
+            const type = (n.data as NodeData).type;
+            return activeTypes.has(type) || type === "value";
+          })
+          .map((n) => n.id),
+      );
+      vNodes = vNodes.filter((n) => kept.has(n.id));
+      vEdges = vEdges.filter((e) => kept.has(e.source) && kept.has(e.target));
+    }
+
+    // Step 3: search highlight (dim everything else)
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      vNodes = vNodes.map((n) => {
+        const label = ((n.data as NodeData).label ?? "").toLowerCase();
+        const matches = label.includes(q);
+        return {
+          ...n,
+          style: {
+            ...(n.style ?? {}),
+            opacity: matches ? 1 : 0.12,
+          },
+        };
+      });
+      const highlighted = new Set(
+        vNodes
+          .filter((n) => {
+            const label = ((n.data as NodeData).label ?? "").toLowerCase();
+            return label.includes(q);
+          })
+          .map((n) => n.id),
+      );
+      vEdges = vEdges.map((e) => ({
+        ...e,
+        style: {
+          ...(e.style ?? {}),
+          opacity: highlighted.has(e.source) || highlighted.has(e.target) ? 1 : 0.05,
+        },
+      }));
+    }
+
+    setVisibleCount(vNodes.length);
+    setNodes(vNodes);
+    setEdges(vEdges);
+  }, [rawNodes, rawEdges, activeTypes, sliderMs, timeRange, search, setNodes, setEdges]);
+
+  const hasTimeRange = timeRange.max - timeRange.min > 86400_000;
+
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <span className="text-sm opacity-30 animate-pulse">
-          loading graph...
-        </span>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        height: "100%", background: CANVAS_BG,
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: 32, height: 32, border: `2px solid ${PANEL_BORD}`,
+            borderTopColor: "#f59e0b", borderRadius: "50%",
+            animation: "spin 0.8s linear infinite", margin: "0 auto 12px",
+          }} />
+          <p style={{ fontSize: 12, color: TEXT_DIM }}>Loading knowledge graph…</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3">
-        <span className="text-sm opacity-40">{error}</span>
-        <Button
-          variant="ghost"
-          size="sm"
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", height: "100%", background: CANVAS_BG, gap: 12,
+      }}>
+        <p style={{ fontSize: 12, color: "#ef4444" }}>{error}</p>
+        <button
           onClick={load}
-          style={{ color: "var(--amber)" }}
+          style={{
+            padding: "6px 16px", borderRadius: 6, fontSize: 12,
+            background: "none", border: `1px solid ${PANEL_BORD}`,
+            color: "#f59e0b", cursor: "pointer",
+          }}
         >
-          retry →
-        </Button>
+          Retry
+        </button>
       </div>
     );
   }
 
   if (rawNodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-2">
-        <span className="text-sm opacity-20">
-          no entities yet
-        </span>
-        <span className="text-sm opacity-15">
-          start chatting to build the knowledge graph
-        </span>
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", height: "100%", background: CANVAS_BG, gap: 8,
+      }}>
+        <div style={{ fontSize: 32, opacity: 0.3 }}>◎</div>
+        <p style={{ fontSize: 13, color: TEXT_DIM }}>No entities yet</p>
+        <p style={{ fontSize: 11, color: TEXT_DIM, opacity: 0.6 }}>
+          Start chatting — the AI will build your knowledge graph automatically.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full">
-      {/* Stats bar */}
-      <div
-        className="absolute top-3 right-3 z-10 flex items-center gap-3 px-3 py-1.5 rounded-sm text-sm"
-        style={{
-          background: "var(--surface-raised)",
-          border: "1px solid var(--line)",
-        }}
-      >
-        <span style={{ color: "var(--amber)" }}>{nodeCount} nodes</span>
-        <span className="opacity-20">·</span>
-        <span className="opacity-40">{edgeCount} edges</span>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={load}
-          className="opacity-30 hover:opacity-60 transition-opacity ml-1"
-        >
-          ↺
-        </Button>
-      </div>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      {/* Controls overlay */}
+      <SearchBar value={search} onChange={setSearch} onClear={() => setSearch("")} />
+      <TypeFilter activeTypes={activeTypes} counts={typeCounts} onChange={setActiveTypes} />
+      <StatsBar
+        nodeCount={rawNodes.length}
+        edgeCount={rawEdges.length}
+        visibleCount={visibleCount}
+        onRefresh={load}
+      />
 
-      {/* Type filter */}
-      <TypeFilterBar activeTypes={activeTypes} onChange={setActiveTypes} />
-
-      {/* Graph */}
+      {/* React Flow canvas */}
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -552,48 +782,97 @@ export function GraphView() {
         onEdgesChange={onEdgesChange}
         nodeTypes={NODE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.15}
-        maxZoom={2.5}
-        style={{ background: "var(--navy)" }}
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.08}
+        maxZoom={3}
+        style={{ background: CANVAS_BG }}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node) =>
           setSelectedId((prev) => (prev === node.id ? null : node.id))
         }
-        onPaneClick={() => setSelectedId(null)}
+        onPaneClick={() => { setSelectedId(null); }}
       >
-        <Background color="#ffffff06" gap={24} size={1} />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={24}
+          size={1}
+          color="#ffffff08"
+        />
         <Controls
           style={{
-            background: "var(--surface-raised)",
-            border: "1px solid var(--line)",
-            borderRadius: "3px",
+            background: PANEL_BG,
+            border: `1px solid ${PANEL_BORD}`,
+            borderRadius: 8,
           }}
         />
         <MiniMap
           style={{
-            background: "var(--surface-raised)",
-            border: "1px solid var(--line)",
+            background: PANEL_BG,
+            border: `1px solid ${PANEL_BORD}`,
+            borderRadius: 8,
           }}
           nodeColor={(n) => {
             const type = (n.data as NodeData)?.type ?? "other";
-            return TYPE_COLORS[type]?.border ?? "#475569";
+            return TYPE_PALETTE[type]?.ring ?? "#475569";
           }}
-          maskColor="rgba(7,8,15,0.7)"
+          maskColor="rgba(6,8,15,0.75)"
         />
       </ReactFlow>
 
+      {/* Legend */}
       <Legend />
 
-      {/* Detail panel */}
+      {/* Time machine slider */}
+      {hasTimeRange && (
+        <TimeMachineSlider
+          value={sliderMs}
+          min={timeRange.min}
+          max={timeRange.max}
+          visibleCount={visibleCount}
+          totalCount={rawNodes.length}
+          onChange={setSliderMs}
+        />
+      )}
+
+      {/* Node detail panel */}
       {selectedId && (
-        <NodeDetailPanel
+        <DetailPanel
           nodeId={selectedId}
           allNodes={rawNodes}
           allEdges={rawEdges}
           onClose={() => setSelectedId(null)}
         />
       )}
+
+      {/* Inline keyframes for spinner and pulse */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+        .react-flow__controls button {
+          background: ${PANEL_BG} !important;
+          border-color: ${PANEL_BORD} !important;
+          color: ${TEXT_MID} !important;
+          fill: ${TEXT_MID} !important;
+        }
+        .react-flow__controls button:hover {
+          background: ${PANEL_BORD} !important;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 13px; height: 13px;
+          border-radius: 50%;
+          background: #f59e0b;
+          cursor: pointer;
+          box-shadow: 0 0 6px #f59e0b66;
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 13px; height: 13px;
+          border-radius: 50%;
+          background: #f59e0b;
+          cursor: pointer;
+          border: none;
+        }
+      `}</style>
     </div>
   );
 }
