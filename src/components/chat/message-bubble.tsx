@@ -89,18 +89,18 @@ function ToolCallBadge({ part }: { part: ToolInvocationPart }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg my-1 w-fit text-sm border",
-        isRunning && "bg-amber-50 border-amber-200 text-amber-700",
-        isDone && isSuccess && "bg-green-50 border-green-200 text-green-700",
-        isDone && !isSuccess && "bg-red-50 border-red-200 text-red-700",
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full my-0.5 w-fit text-xs font-medium border",
+        isRunning && "bg-amber-50/80 border-amber-200/60 text-amber-700",
+        isDone && isSuccess && "bg-emerald-50/80 border-emerald-200/60 text-emerald-700",
+        isDone && !isSuccess && "bg-red-50/80 border-red-200/60 text-red-700",
       )}
     >
       {isRunning ? (
-        <Loading03Icon className="h-3 w-3 animate-spin shrink-0" />
+        <Loading03Icon className="size-3 animate-spin shrink-0" />
       ) : (
-        <CheckmarkCircle01Icon className="h-3 w-3 shrink-0" />
+        <CheckmarkCircle01Icon className="size-3 shrink-0" />
       )}
-      <Icon className="h-3 w-3 shrink-0 opacity-70" />
+      <Icon className="size-3 shrink-0 opacity-60" />
       <span>
         {isRunning
           ? `${meta.verb}…`
@@ -113,13 +113,13 @@ function ToolCallBadge({ part }: { part: ToolInvocationPart }) {
 function TextBlock({ text }: { text: string }) {
   if (!text.trim()) return null;
   return (
-    <div className="px-4 py-3 rounded-lg text-sm leading-relaxed border border-border bg-white text-foreground">
+    <div className="text-sm leading-relaxed text-gray-800">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        className="prose prose-sm max-w-none prose-p:my-1 prose-headings:text-foreground prose-code:text-foreground"
+        className="prose prose-sm max-w-none prose-p:my-1.5 prose-headings:text-gray-900 prose-headings:font-semibold prose-code:text-gray-800 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2"
         components={{
           pre: ({ children }) => (
-            <pre className="overflow-x-auto rounded-lg p-3 text-sm my-3 bg-gray-50 border border-border text-foreground">
+            <pre className="overflow-x-auto rounded-xl p-3.5 text-[13px] my-3 bg-gray-50 border border-gray-100 text-gray-800">
               {children}
             </pre>
           ),
@@ -127,7 +127,7 @@ function TextBlock({ text }: { text: string }) {
             className?.includes("language-") ? (
               <code className={className}>{children}</code>
             ) : (
-              <code className="rounded-md px-1.5 py-0.5 text-sm bg-gray-100 border border-border text-foreground">
+              <code className="rounded-md px-1.5 py-0.5 text-[13px] bg-gray-100 text-gray-700">
                 {children}
               </code>
             ),
@@ -153,11 +153,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     if (!text) return null;
     return (
       <div className="flex gap-3 w-full flex-row-reverse">
-        <div className="size-7 rounded-full bg-foreground flex items-center justify-center text-sm font-medium text-background shrink-0">
+        <div className="size-7 rounded-full bg-gray-900 flex items-center justify-center text-xs font-semibold text-white shrink-0 shadow-sm">
           M
         </div>
-        <div className="max-w-[80%] px-4 py-3 rounded-lg bg-foreground text-background">
-          <p className="whitespace-pre-wrap text-sm">{text}</p>
+        <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-md bg-gray-900 text-white">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{text}</p>
         </div>
       </div>
     );
@@ -173,10 +173,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     if (!text) return null;
     return (
       <div className="flex gap-3 w-full flex-row">
-        <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-muted-foreground shrink-0">
+        <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0 shadow-sm">
           AI
         </div>
-        <div className="flex flex-col gap-0.5 max-w-[80%]">
+        <div className="flex flex-col gap-1 max-w-[80%] pt-0.5">
           <TextBlock text={text} />
         </div>
       </div>
@@ -185,10 +185,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div className="flex gap-3 w-full flex-row">
-      <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-muted-foreground shrink-0">
+      <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0 shadow-sm">
         AI
       </div>
-      <div className="flex flex-col gap-0.5 max-w-[80%]">
+      <div className="flex flex-col gap-1 max-w-[80%] pt-0.5">
         {parts.map((part, i) => {
           if (part.type === "text") {
             return <TextBlock key={i} text={(part as { text: string }).text} />;

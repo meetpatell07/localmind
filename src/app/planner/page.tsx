@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CheckmarkSquare01Icon, PlusSignIcon, GridViewIcon, LeftToRightListDashIcon, SparklesIcon, MagicWand01Icon, AlertCircleIcon } from "hugeicons-react";
+import { CheckmarkSquare01Icon, PlusSignIcon, GridViewIcon, LeftToRightListDashIcon, SparklesIcon, MagicWand01Icon, AlertCircleIcon, Cancel01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KanbanBoard } from "@/components/planner/kanban-board";
 import { TaskCard } from "@/components/planner/task-card";
 import { TaskSkeleton, PlanSkeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { Task, TaskStatus, TaskPriority } from "@/components/planner/task-card";
 
 interface DailyPlan {
@@ -129,111 +130,122 @@ export default function PlannerPage() {
   }
 
   const todoCnt = tasks.filter((t) => t.status === "todo").length;
+  const inProgressCnt = tasks.filter((t) => t.status === "in_progress").length;
   const doneCnt = tasks.filter((t) => t.status === "done").length;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden animate-fade-in">
       {/* Header */}
-      <div className="px-6 pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
-        <div className="flex items-end justify-between mb-4">
+      <div className="px-4 md:px-6 pt-4 pb-4 shrink-0 border-b border-gray-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-xl tracking-wider" style={{ color: "var(--amber)" }}>
-              Planner
-            </h1>
-            <p className="text-sm opacity-25 mt-1">
-              {tasks.length} tasks · {todoCnt} pending · {doneCnt} done
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Planner</h1>
+            <div className="flex items-center gap-3 mt-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="size-1.5 rounded-full bg-gray-400" />
+                <span className="text-xs text-gray-500">{todoCnt} to do</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="size-1.5 rounded-full bg-blue-500" />
+                <span className="text-xs text-gray-500">{inProgressCnt} active</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="size-1.5 rounded-full bg-emerald-500" />
+                <span className="text-xs text-gray-500">{doneCnt} done</span>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            {loading && <span className="text-sm opacity-30 animate-pulse">loading...</span>}
+            {loading && <span className="text-xs font-medium text-gray-400 animate-pulse">Loading...</span>}
 
             {/* AI plan button */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleGeneratePlan}
               disabled={planLoading}
-              className="disabled:opacity-40 transition-colors"
-              style={{
-                background: showPlan ? "var(--amber-dim)" : "rgba(255,255,255,0.03)",
-                color: showPlan ? "var(--amber)" : "hsl(215 12% 50%)",
-                border: "1px solid var(--line)",
-              }}
+              className={cn(
+                "text-xs transition-all gap-1.5",
+                showPlan
+                  ? "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100"
+                  : "hover:bg-gray-50"
+              )}
             >
-              <SparklesIcon className="h-3.5 w-3.5" />
-              {planLoading ? "planning..." : "daily plan"}
+              <SparklesIcon className={cn("size-3.5", showPlan ? "text-violet-500" : "text-gray-400")} />
+              {planLoading ? "Planning..." : "Daily plan"}
             </Button>
 
             {/* View toggle */}
-            <div className="flex items-center" style={{ border: "1px solid var(--line)", borderRadius: "3px" }}>
-              <Button
-                variant="ghost"
-                size="icon-xs"
+            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+              <button
                 onClick={() => setView("kanban")}
-                className="rounded-none transition-colors"
-                style={{
-                  background: view === "kanban" ? "var(--amber-dim)" : "transparent",
-                  color: view === "kanban" ? "var(--amber)" : "hsl(215 12% 40%)",
-                  borderRight: "1px solid var(--line)",
-                }}
+                className={cn(
+                  "px-2.5 py-1.5 transition-colors border-r border-gray-200",
+                  view === "kanban"
+                    ? "bg-gray-900 text-white"
+                    : "bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                )}
               >
-                <GridViewIcon className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
+                <GridViewIcon className="size-3.5" />
+              </button>
+              <button
                 onClick={() => setView("list")}
-                className="rounded-none transition-colors"
-                style={{
-                  background: view === "list" ? "var(--amber-dim)" : "transparent",
-                  color: view === "list" ? "var(--amber)" : "hsl(215 12% 40%)",
-                }}
+                className={cn(
+                  "px-2.5 py-1.5 transition-colors",
+                  view === "list"
+                    ? "bg-gray-900 text-white"
+                    : "bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                )}
               >
-                <LeftToRightListDashIcon className="h-3.5 w-3.5" />
-              </Button>
+                <LeftToRightListDashIcon className="size-3.5" />
+              </button>
             </div>
 
             {/* Add task */}
             <Button
-              variant="ghost"
+              variant="default"
               size="sm"
               onClick={() => setShowAdd((v) => !v)}
-              style={{
-                background: showAdd ? "var(--amber-dim)" : "rgba(240,160,21,0.08)",
-                color: "var(--amber)",
-                border: "1px solid rgba(240,160,21,0.2)",
-              }}
+              className={cn(
+                "text-xs gap-1.5 transition-all",
+                showAdd
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-900 text-white hover:bg-gray-800"
+              )}
             >
-              <PlusSignIcon className="h-3.5 w-3.5" />
-              add task
+              <PlusSignIcon className="size-3.5" />
+              Add task
             </Button>
           </div>
         </div>
 
         {/* NL task input */}
         <form onSubmit={handleNLCreate} className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-2 flex-1 px-3 py-2"
-            style={{ border: "1px solid var(--line)", borderRadius: "3px", background: "var(--surface-raised)" }}
-          >
-            <MagicWand01Icon className="h-3.5 w-3.5 opacity-30 shrink-0" style={{ color: "var(--amber)" }} />
+          <div className={cn(
+            "flex items-center gap-2.5 flex-1 px-3.5 py-2.5 rounded-xl border bg-white transition-all",
+            nlInput
+              ? "border-gray-300 shadow-sm ring-1 ring-gray-100"
+              : "border-gray-200 hover:border-gray-300"
+          )}>
+            <MagicWand01Icon className={cn(
+              "size-4 shrink-0 transition-colors",
+              nlInput ? "text-violet-400" : "text-gray-300",
+            )} />
             <Input
               value={nlInput}
               onChange={(e) => setNlInput(e.target.value)}
-              placeholder="remind me to review PRs tomorrow morning..."
-              className="flex-1 bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
-              style={{ color: "hsl(210 18% 80%)" }}
+              placeholder="Describe a task naturally... e.g. &quot;Review PRs tomorrow morning&quot;"
+              className="flex-1 bg-transparent border-none h-auto p-0 text-sm text-gray-900 focus-visible:ring-0 placeholder:text-gray-400"
             />
           </div>
           <Button
-            variant="ghost"
+            variant={nlInput.trim() ? "default" : "outline"}
             size="sm"
             type="submit"
             disabled={nlParsing || !nlInput.trim()}
-            className="disabled:opacity-30"
-            style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid rgba(240,160,21,0.2)" }}
+            className="text-xs rounded-xl transition-all"
           >
-            {nlParsing ? "parsing..." : "→"}
+            {nlParsing ? "Parsing..." : "Create"}
           </Button>
         </form>
 
@@ -241,61 +253,57 @@ export default function PlannerPage() {
         {showAdd && (
           <form
             onSubmit={handleAdd}
-            className="mt-3 p-4 rounded-sm space-y-3"
-            style={{ background: "var(--navy)", border: "1px solid var(--line)" }}
+            className="mt-3 p-4 rounded-xl space-y-3 border border-gray-200 bg-white shadow-sm animate-slide-up-fade"
           >
             <Input
               autoFocus
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="Task title..."
-              className="w-full bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
-              style={{ color: "hsl(210 18% 85%)" }}
+              className="w-full bg-transparent border-none h-auto p-0 text-sm text-gray-900 font-medium focus-visible:ring-0 placeholder:text-gray-400"
             />
             <Input
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Description (optional)..."
-              className="w-full bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
-              style={{ color: "hsl(210 18% 60%)" }}
+              className="w-full bg-transparent border-none h-auto p-0 text-sm text-gray-500 focus-visible:ring-0 placeholder:text-gray-400"
             />
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex gap-1">
+              <div className="flex gap-1 bg-gray-50 rounded-lg p-0.5">
                 {(["low", "medium", "high"] as TaskPriority[]).map((p) => (
-                  <Button
+                  <button
                     key={p}
-                    variant="ghost"
-                    size="xs"
                     type="button"
                     onClick={() => setNewPriority(p)}
-                    style={{
-                      background: newPriority === p ? "var(--amber-dim)" : "rgba(255,255,255,0.04)",
-                      color: newPriority === p ? "var(--amber)" : "hsl(215 12% 45%)",
-                      border: newPriority === p ? "1px solid rgba(240,160,21,0.3)" : "1px solid var(--line)",
-                    }}
+                    className={cn(
+                      "text-xs capitalize px-2.5 py-1 rounded-md transition-all font-medium",
+                      newPriority === p
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-400 hover:text-gray-600"
+                    )}
                   >
                     {p}
-                  </Button>
+                  </button>
                 ))}
               </div>
               <Input
                 type="date"
                 value={newDue}
                 onChange={(e) => setNewDue(e.target.value)}
-                className="bg-transparent border-none h-auto p-0 w-auto focus:ring-0 focus:border-none opacity-40 focus:opacity-80"
-                style={{ color: "hsl(210 18% 70%)" }}
+                className="bg-transparent border-gray-200 h-7 text-xs text-gray-500 w-auto focus-visible:ring-gray-200 rounded-lg"
               />
               <div className="ml-auto flex gap-2">
-                <Button variant="ghost" size="xs" type="button" onClick={() => setShowAdd(false)} className="opacity-30 hover:opacity-60">cancel</Button>
+                <Button variant="ghost" size="sm" type="button" onClick={() => setShowAdd(false)} className="text-xs text-gray-400 hover:text-gray-700">
+                  Cancel
+                </Button>
                 <Button
-                  variant="ghost"
-                  size="xs"
+                  variant="default"
+                  size="sm"
                   type="submit"
                   disabled={adding || !newTitle.trim()}
-                  className="disabled:opacity-30"
-                  style={{ background: "var(--amber-dim)", color: "var(--amber)" }}
+                  className="text-xs"
                 >
-                  {adding ? "adding..." : "add →"}
+                  {adding ? "Adding..." : "Add task"}
                 </Button>
               </div>
             </div>
@@ -304,68 +312,69 @@ export default function PlannerPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-4">
 
         {/* Error state */}
         {error && (
-          <div
-            className="flex items-center gap-2.5 px-4 py-3 rounded-sm text-sm"
-            style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "rgba(248,113,113,0.8)" }}
-          >
-            <AlertCircleIcon className="h-4 w-4 shrink-0" />
-            {error}
-            <Button variant="ghost" size="xs" onClick={load} className="ml-auto opacity-60 hover:opacity-100">retry →</Button>
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm bg-red-50 border border-red-100 text-red-600 animate-slide-up-fade">
+            <AlertCircleIcon className="size-4 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <Button variant="ghost" size="sm" onClick={load} className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50">
+              Retry
+            </Button>
           </div>
         )}
 
         {/* AI Plan panel */}
         {showPlan && (
-          <div
-            className="rounded-sm overflow-hidden"
-            style={{ border: "1px solid var(--line)" }}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-2.5"
-              style={{ background: "var(--surface-raised)", borderBottom: "1px solid var(--line)" }}
-            >
+          <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50/50 to-white shadow-sm overflow-hidden animate-slide-up-fade">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-violet-100/50">
               <div className="flex items-center gap-2">
-                <SparklesIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-                <span className="text-sm tracking-widest uppercase opacity-60">Today&apos;s Focus</span>
+                <div className="size-6 rounded-lg bg-violet-100 flex items-center justify-center">
+                  <SparklesIcon className="size-3.5 text-violet-500" />
+                </div>
+                <span className="text-xs font-semibold text-violet-600 uppercase tracking-wider">Today&apos;s Focus</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
-                  size="xs"
+                  size="sm"
                   onClick={handleGeneratePlan}
                   disabled={planLoading}
-                  className="opacity-30 hover:opacity-70 disabled:opacity-20"
+                  className="text-xs text-violet-400 hover:text-violet-600 hover:bg-violet-50"
                 >
-                  {planLoading ? "..." : "refresh"}
+                  {planLoading ? "..." : "Refresh"}
                 </Button>
-                <Button variant="ghost" size="icon-xs" onClick={() => setShowPlan(false)} className="opacity-20 hover:opacity-50">✕</Button>
+                <button
+                  onClick={() => setShowPlan(false)}
+                  className="p-1 rounded-md text-violet-300 hover:text-violet-500 hover:bg-violet-50 transition-colors"
+                >
+                  <Cancel01Icon className="size-3.5" />
+                </button>
               </div>
             </div>
-            <div className="px-4 py-3" style={{ background: "var(--navy)" }}>
+            <div className="px-4 py-3">
               {planLoading ? (
                 <PlanSkeleton />
               ) : plan ? (
                 <div className="space-y-3">
-                  <p className="text-sm opacity-50 italic">{plan.summary}</p>
-                  {plan.prioritized.map((item, i) => (
-                    <div key={item.taskId} className="flex items-start gap-3">
-                      <span className="text-sm opacity-20 mt-0.5 w-4 shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm" style={{ color: "hsl(210 18% 82%)" }}>{item.title}</p>
-                        <p className="text-sm opacity-35 mt-0.5">{item.reason}</p>
+                  <p className="text-sm text-gray-500 italic leading-relaxed">{plan.summary}</p>
+                  <div className="space-y-2">
+                    {plan.prioritized.map((item, i) => (
+                      <div key={item.taskId} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-violet-50/50 transition-colors">
+                        <span className="text-[10px] font-bold text-violet-400 bg-violet-100 px-1.5 py-0.5 rounded mt-0.5 shrink-0">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800">{item.title}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{item.reason}</p>
+                        </div>
+                        <span className="text-[10px] font-medium text-violet-500 bg-violet-100/50 px-2 py-0.5 rounded-md shrink-0 mt-0.5">
+                          {item.timeEstimate}
+                        </span>
                       </div>
-                      <span
-                        className="text-sm shrink-0"
-                        style={{ color: "var(--amber)", opacity: 0.6 }}
-                      >
-                        {item.timeEstimate}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -374,27 +383,37 @@ export default function PlannerPage() {
 
         {/* Tasks */}
         {loading ? (
-          <div className="space-y-2">
-            {[1, 2, 3, 4].map((i) => <TaskSkeleton key={i} />)}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[0, 1, 2].map((col) => (
+              <div key={col} className="space-y-2">
+                <div className="h-5 mb-2" />
+                {[1, 2].map((i) => <TaskSkeleton key={i} />)}
+              </div>
+            ))}
           </div>
         ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <CheckmarkSquare01Icon className="h-8 w-8 opacity-10" />
-            <p className="text-sm opacity-25">no tasks yet</p>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="size-14 rounded-2xl bg-gray-50 flex items-center justify-center">
+              <CheckmarkSquare01Icon className="size-7 text-gray-300" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-500">No tasks yet</p>
+              <p className="text-xs text-gray-400 mt-1">Create your first task to get started</p>
+            </div>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setShowAdd(true)}
-              className="opacity-40 hover:opacity-70"
-              style={{ color: "var(--amber)" }}
+              className="text-xs gap-1.5"
             >
-              add your first task →
+              <PlusSignIcon className="size-3.5" />
+              Add your first task
             </Button>
           </div>
         ) : view === "kanban" ? (
           <KanbanBoard tasks={tasks} onStatusChange={handleStatusChange} onDelete={handleDelete} />
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-w-2xl">
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onStatusChange={handleStatusChange} onDelete={handleDelete} />
             ))}

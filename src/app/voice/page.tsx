@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic01Icon, MicOff01Icon, VolumeHighIcon, VolumeOffIcon } from "hugeicons-react";
+import { cn } from "@/lib/utils";
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
@@ -55,6 +56,7 @@ export default function VoicePage() {
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
@@ -82,6 +84,10 @@ export default function VoicePage() {
 
     recognitionRef.current = rec;
   }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [turns, thinking]);
 
   const speak = useCallback((text: string) => {
     if (!ttsEnabled) return;
@@ -114,7 +120,6 @@ export default function VoicePage() {
         sessionIdRef.current = res.headers.get("X-Session-Id");
       }
 
-      // Read streaming response
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
@@ -124,7 +129,6 @@ export default function VoicePage() {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value);
-          // AI SDK data stream format: lines starting with "0:"
           for (const line of chunk.split("\n")) {
             if (line.startsWith("0:")) {
               try {
@@ -149,7 +153,6 @@ export default function VoicePage() {
     if (!recognitionRef.current) return;
     if (listening) {
       recognitionRef.current.stop();
-      // send whatever was captured
       if (transcript.trim()) sendToChat(transcript.trim());
     } else {
       setTranscript("");
@@ -160,129 +163,144 @@ export default function VoicePage() {
 
   if (!supported) {
     return (
-      <div className="flex flex-col h-full items-center justify-center gap-4">
-        <MicOff01Icon className="h-8 w-8 opacity-20" />
-        <p className="text-sm opacity-30 text-center max-w-xs">
-          Web Speech API not supported in this browser.<br />
-          Use Chrome or Edge for voice features.
-        </p>
+      <div className="flex flex-col h-full items-center justify-center gap-4 animate-fade-in">
+        <div className="size-14 rounded-2xl bg-gray-50 flex items-center justify-center">
+          <MicOff01Icon className="size-7 text-gray-300" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-gray-500">Speech not supported</p>
+          <p className="text-xs text-gray-400 mt-1">Use Chrome or Edge for voice features</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden animate-fade-in">
       {/* Header */}
-      <div className="px-6 pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
-        <div className="flex items-end justify-between">
+      <div className="px-4 md:px-6 pt-4 pb-4 shrink-0 border-b border-gray-100">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display italic text-2xl leading-none" style={{ color: "var(--amber)" }}>
-              Voice
-            </h1>
-            <p className="text-sm opacity-25 mt-1">
-              push to talk · Web Speech API
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Voice</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Push to talk · {turns.length} {turns.length === 1 ? "message" : "messages"}
             </p>
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setTtsEnabled((v) => !v)}
-            className="opacity-40 hover:opacity-70 transition-opacity"
+            className={cn(
+              "text-xs gap-1.5 transition-all",
+              ttsEnabled
+                ? "text-gray-700"
+                : "text-gray-400",
+            )}
           >
             {ttsEnabled
-              ? <VolumeHighIcon className="h-3.5 w-3.5" />
-              : <VolumeOffIcon className="h-3.5 w-3.5" />
+              ? <VolumeHighIcon className="size-3.5" />
+              : <VolumeOffIcon className="size-3.5" />
             }
-            {ttsEnabled ? "voice on" : "voice off"}
+            {ttsEnabled ? "Voice on" : "Voice off"}
           </Button>
         </div>
       </div>
 
       {/* Conversation */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-        {turns.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-30">
-            <Mic01Icon className="h-8 w-8" />
-            <p className="text-sm">hold the button and speak</p>
-          </div>
-        )}
-        {turns.map((turn, i) => (
-          <div
-            key={i}
-            className={`flex gap-3 ${turn.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {turn.role === "assistant" && (
-              <span className="text-sm opacity-30 mt-1 shrink-0">ai</span>
-            )}
-            <div
-              className="text-sm leading-relaxed px-3 py-2 rounded-sm max-w-[80%]"
-              style={{
-                background: turn.role === "user" ? "var(--amber-dim)" : "var(--surface-raised)",
-                color: turn.role === "user" ? "var(--amber)" : "hsl(210 18% 75%)",
-                border: "1px solid var(--line)",
-              }}
-            >
-              {turn.text}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
+        {turns.length === 0 && !thinking && (
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="size-14 rounded-2xl bg-gray-50 flex items-center justify-center">
+              <Mic01Icon className="size-7 text-gray-300" />
             </div>
-            {turn.role === "user" && (
-              <span className="text-sm opacity-30 mt-1 shrink-0">you</span>
-            )}
-          </div>
-        ))}
-        {thinking && (
-          <div className="flex gap-3">
-            <span className="text-sm opacity-30 mt-1">ai</span>
-            <div
-              className="text-sm px-3 py-2 rounded-sm"
-              style={{ background: "var(--surface-raised)", border: "1px solid var(--line)", color: "hsl(215 12% 40%)" }}
-            >
-              <span className="animate-pulse">thinking...</span>
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-500">Start a conversation</p>
+              <p className="text-xs text-gray-400 mt-1">Click the microphone and speak</p>
             </div>
           </div>
         )}
+
+        <div className="space-y-3 max-w-2xl mx-auto">
+          {turns.map((turn, i) => (
+            <div
+              key={i}
+              className={cn("flex gap-3", turn.role === "user" ? "justify-end" : "justify-start")}
+            >
+              {turn.role === "assistant" && (
+                <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[10px] font-bold text-gray-400">AI</span>
+                </div>
+              )}
+              <div
+                className={cn(
+                  "text-sm leading-relaxed px-4 py-2.5 rounded-2xl max-w-[80%]",
+                  turn.role === "user"
+                    ? "bg-gray-900 text-white rounded-br-md"
+                    : "bg-gray-100 text-gray-800 rounded-bl-md",
+                )}
+              >
+                {turn.text}
+              </div>
+            </div>
+          ))}
+
+          {thinking && (
+            <div className="flex gap-3">
+              <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-[10px] font-bold text-gray-400">AI</span>
+              </div>
+              <div className="bg-gray-100 text-gray-400 text-sm px-4 py-2.5 rounded-2xl rounded-bl-md">
+                <span className="flex items-center gap-1">
+                  <span className="size-1.5 rounded-full bg-gray-400 animate-bounce-dot stagger-1" />
+                  <span className="size-1.5 rounded-full bg-gray-400 animate-bounce-dot stagger-2" />
+                  <span className="size-1.5 rounded-full bg-gray-400 animate-bounce-dot stagger-3" />
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Transcript + push-to-talk */}
-      <div
-        className="px-6 py-5 shrink-0 flex flex-col items-center gap-4"
-        style={{ borderTop: "1px solid var(--line)" }}
-      >
+      <div className="px-4 md:px-6 py-6 shrink-0 flex flex-col items-center gap-4 border-t border-gray-100">
+        {/* Live transcript */}
         {transcript && (
-          <p
-            className="text-sm text-center opacity-60 max-w-sm"
-            style={{ color: "hsl(210 18% 75%)" }}
-          >
-            {transcript}
-          </p>
+          <div className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-100 max-w-sm">
+            <p className="text-sm text-gray-600 text-center">{transcript}</p>
+          </div>
         )}
-        <Button
-          variant="ghost"
+
+        {/* Mic button */}
+        <button
           onMouseDown={!listening ? toggleListen : undefined}
           onMouseUp={listening ? toggleListen : undefined}
           onTouchStart={!listening ? toggleListen : undefined}
           onTouchEnd={listening ? toggleListen : undefined}
           onClick={listening ? toggleListen : undefined}
           disabled={thinking}
-          className="relative w-16 h-16 rounded-full transition-all disabled:opacity-30"
-          style={{
-            background: listening
-              ? "rgba(240,160,21,0.15)"
-              : "var(--surface-raised)",
-            border: listening
-              ? "2px solid var(--amber)"
-              : "2px solid var(--line)",
-            boxShadow: listening
-              ? "0 0 24px rgba(240,160,21,0.2)"
-              : "none",
-          }}
+          className={cn(
+            "relative size-16 rounded-full transition-all duration-300 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed",
+            listening
+              ? "bg-red-500 shadow-lg shadow-red-200 scale-110"
+              : "bg-gray-900 shadow-md hover:shadow-lg hover:scale-105 active:scale-95",
+          )}
         >
-          {listening
-            ? <Mic01Icon className="h-6 w-6 animate-pulse" style={{ color: "var(--amber)" }} />
-            : <Mic01Icon className="h-6 w-6 opacity-50" />
+          <Mic01Icon className={cn(
+            "size-6 transition-colors",
+            listening ? "text-white animate-pulse" : "text-white",
+          )} />
+          {listening && (
+            <span className="absolute inset-0 rounded-full border-2 border-red-400 animate-ping opacity-30" />
+          )}
+        </button>
+
+        <p className="text-xs text-gray-400">
+          {thinking
+            ? "Thinking..."
+            : listening
+            ? "Listening... release to send"
+            : "Click or hold to speak"
           }
-        </Button>
-        <p className="text-sm opacity-20">
-          {listening ? "listening... click to send" : "click to speak"}
         </p>
       </div>
     </div>

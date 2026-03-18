@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Delete02Icon, CircleIcon, CheckmarkCircle02Icon, Clock01Icon, ArrowRight01Icon } from "hugeicons-react";
+import { cn } from "@/lib/utils";
 
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 export type TaskPriority = "low" | "medium" | "high";
@@ -23,12 +24,13 @@ interface TaskCardProps {
   task: Task;
   onStatusChange: (id: string, status: TaskStatus) => void;
   onDelete: (id: string) => void;
+  isDragging?: boolean;
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high:   "rgba(248, 113, 113, 0.8)",
-  medium: "rgba(240, 160, 21, 0.7)",
-  low:    "rgba(148, 163, 184, 0.5)",
+const PRIORITY_CONFIG: Record<string, { bg: string; text: string; border: string }> = {
+  high:   { bg: "bg-red-50", text: "text-red-600", border: "border-red-100" },
+  medium: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
+  low:    { bg: "bg-slate-50", text: "text-slate-500", border: "border-slate-200" },
 };
 
 const STATUS_NEXT: Record<TaskStatus, TaskStatus> = {
@@ -38,91 +40,107 @@ const STATUS_NEXT: Record<TaskStatus, TaskStatus> = {
   cancelled:   "todo",
 };
 
-export function TaskCard({ task, onStatusChange, onDelete }: TaskCardProps) {
-  const priorityColor = PRIORITY_COLORS[task.priority ?? "medium"] ?? PRIORITY_COLORS.medium;
+export function TaskCard({ task, onStatusChange, onDelete, isDragging }: TaskCardProps) {
+  const priority = PRIORITY_CONFIG[task.priority ?? "medium"] ?? PRIORITY_CONFIG.medium;
   const isDone = task.status === "done";
+
+  const isOverdue = task.dueDate && !isDone && new Date(task.dueDate) < new Date();
 
   return (
     <div
-      className="rounded-sm px-3 py-2.5 group transition-all"
-      style={{
-        background: "var(--surface-raised)",
-        border: "1px solid var(--line)",
-        opacity: isDone ? 0.45 : 1,
-      }}
+      className={cn(
+        "rounded-lg px-3.5 py-3 group transition-all bg-white border shadow-sm",
+        isDragging
+          ? "border-blue-200 shadow-lg shadow-blue-100/50 ring-2 ring-blue-100 rotate-[1.5deg] scale-[1.02]"
+          : "border-gray-100 hover:border-gray-200 hover:shadow-md",
+        isDone && "opacity-50",
+      )}
     >
       <div className="flex items-start gap-2.5">
         {/* Status toggle */}
-        <Button
-          variant="ghost"
-          size="icon-xs"
+        <button
           onClick={() => onStatusChange(task.id, STATUS_NEXT[task.status])}
-          className="mt-0.5 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-          title={`Mark as ${STATUS_NEXT[task.status]}`}
+          className={cn(
+            "mt-0.5 shrink-0 transition-colors",
+            isDone
+              ? "text-emerald-500 hover:text-emerald-600"
+              : task.status === "in_progress"
+              ? "text-blue-500 hover:text-blue-600"
+              : "text-gray-300 hover:text-gray-400",
+          )}
+          title={`Mark as ${STATUS_NEXT[task.status].replace("_", " ")}`}
         >
-          {isDone
-            ? <CheckmarkCircle02Icon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-            : task.status === "in_progress"
-            ? <Clock01Icon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-            : <CircleIcon className="h-3.5 w-3.5" style={{ color: "hsl(215 12% 45%)" }} />
-          }
-        </Button>
+          {isDone ? (
+            <CheckmarkCircle02Icon className="size-4" />
+          ) : task.status === "in_progress" ? (
+            <Clock01Icon className="size-4" />
+          ) : (
+            <CircleIcon className="size-4" />
+          )}
+        </button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p
-            className="text-sm leading-snug"
-            style={{
-              color: isDone ? "hsl(215 12% 40%)" : "hsl(210 18% 82%)",
-              textDecoration: isDone ? "line-through" : "none",
-            }}
+            className={cn(
+              "text-sm font-medium leading-snug",
+              isDone ? "text-gray-400 line-through" : "text-gray-800",
+            )}
           >
             {task.title}
           </p>
           {task.description && (
-            <p className="text-sm mt-0.5 opacity-30 truncate">
+            <p className="text-xs text-gray-400 mt-0.5 truncate">
               {task.description}
             </p>
           )}
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            {task.priority && (
-              <span
-                className="text-sm px-1.5 py-0.5 rounded-sm"
-                style={{
-                  background: `${priorityColor.replace(/0\.\d+\)/, "0.1)")}`,
-                  color: priorityColor,
-                  border: `1px solid ${priorityColor.replace(/0\.\d+\)/, "0.2)")}`,
-                }}
-              >
-                {task.priority}
-              </span>
-            )}
-            {task.dueDate && (
-              <span className="text-sm opacity-30 flex items-center gap-1">
-                <ArrowRight01Icon className="h-2.5 w-2.5" />
-                {new Date(task.dueDate).toLocaleDateString("en", { month: "short", day: "numeric" })}
-              </span>
-            )}
-            {(task.tags ?? []).map((tag) => (
-              <span
-                key={tag}
-                className="text-sm px-1 py-0.5 rounded-sm"
-                style={{ background: "rgba(255,255,255,0.04)", color: "hsl(215 12% 45%)" }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+
+          {/* Meta row */}
+          {(task.priority || task.dueDate || (task.tags ?? []).length > 0) && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              {task.priority && (
+                <span
+                  className={cn(
+                    "text-[10px] font-medium px-1.5 py-0.5 rounded-md border capitalize",
+                    priority.bg, priority.text, priority.border,
+                  )}
+                >
+                  {task.priority}
+                </span>
+              )}
+              {task.dueDate && (
+                <span
+                  className={cn(
+                    "text-[10px] font-medium px-1.5 py-0.5 rounded-md flex items-center gap-1",
+                    isOverdue
+                      ? "text-red-600 bg-red-50 border border-red-100"
+                      : "text-gray-500 bg-gray-50 border border-gray-100",
+                  )}
+                >
+                  <ArrowRight01Icon className="size-2.5" />
+                  {new Date(task.dueDate).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                </span>
+              )}
+              {(task.tags ?? []).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-500 border border-gray-100"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Delete */}
         <Button
           variant="ghost"
-          size="icon-xs"
+          size="icon"
           onClick={() => onDelete(task.id)}
-          className="shrink-0 opacity-0 group-hover:opacity-30 hover:!opacity-70 transition-opacity"
+          className="shrink-0 size-6 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 hover:bg-red-50"
         >
-          <Delete02Icon className="h-3 w-3" style={{ color: "rgba(248,113,113,0.8)" }} />
+          <Delete02Icon className="size-3" />
         </Button>
       </div>
     </div>
