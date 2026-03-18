@@ -1,0 +1,2 @@
+ALTER TABLE "atomic_facts" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+ALTER TABLE "relationships" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;

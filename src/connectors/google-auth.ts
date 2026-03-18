@@ -1,5 +1,5 @@
 /**
- * Google OAuth2 helper — manages the full token lifecycle for Gmail + Calendar.
+ * Google OAuth2 helper — manages the full token lifecycle for Gmail + Calendar + Drive.
  *
  * Tokens are stored in the `settings` table under:
  *   key = "connector:google:tokens"
@@ -21,6 +21,7 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.compose",  // draft creation
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
