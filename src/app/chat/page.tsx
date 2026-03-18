@@ -5,7 +5,6 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/chat-input";
-import { Button } from "@/components/ui/button";
 import { AlertCircleIcon, RefreshIcon } from "hugeicons-react";
 
 export default function ChatPage() {
@@ -68,22 +67,39 @@ export default function ChatPage() {
   const isStreaming = status === "streaming" || status === "submitted";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 md:px-6 py-4 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Chat</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {messages.length > 0
+              ? `${messages.length} message${messages.length !== 1 ? "s" : ""} this session`
+              : "Start a new conversation with LocalMind."}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className={`size-1.5 rounded-full ${ollamaOnline ? "bg-emerald-500" : "bg-red-400"}`} />
+          <span className="text-xs font-medium text-gray-500">
+            {ollamaOnline ? "Online" : "Offline"}
+          </span>
+        </div>
+      </div>
+
+      {/* Offline banner */}
       {(!ollamaOnline || error) && (
-        <div className="flex items-center gap-3 px-6 py-2.5 shrink-0 bg-destructive/5 border-b border-destructive/15">
-          <AlertCircleIcon className="h-3.5 w-3.5 shrink-0 text-destructive" />
-          <span className="text-sm text-destructive">
+        <div className="flex items-center gap-3 px-4 md:px-6 py-2 shrink-0 bg-red-50/50 border-b border-red-100">
+          <AlertCircleIcon className="size-3.5 shrink-0 text-red-500" />
+          <span className="text-xs font-medium text-red-600">
             Ollama is starting up — responses will resume shortly
           </span>
-          <Button
-            variant="ghost"
-            size="xs"
-            className="ml-auto text-destructive/70 hover:text-destructive transition-colors"
+          <button
+            className="ml-auto flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors"
             onClick={checkOllama}
           >
-            <RefreshIcon className="h-3 w-3" />
-            retry
-          </Button>
+            <RefreshIcon className="size-3" />
+            Retry
+          </button>
         </div>
       )}
 

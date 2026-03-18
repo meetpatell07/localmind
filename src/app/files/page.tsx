@@ -3,7 +3,17 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FolderOpenIcon, Upload01Icon, Search01Icon, File01Icon, FileAttachmentIcon, Image01Icon, Archive02Icon } from "hugeicons-react";
+import {
+  FolderOpenIcon,
+  Upload01Icon,
+  Search01Icon,
+  File01Icon,
+  FileAttachmentIcon,
+  Image01Icon,
+  Archive02Icon,
+  Cancel01Icon,
+} from "hugeicons-react";
+import { cn } from "@/lib/utils";
 
 interface VaultFile {
   id: string;
@@ -15,19 +25,28 @@ interface VaultFile {
   createdAt: string;
 }
 
-function FileIcon({ mime }: { mime: string | null }) {
-  if (!mime) return <File01Icon className="h-3.5 w-3.5" />;
-  if (mime.startsWith("image/")) return <Image01Icon className="h-3.5 w-3.5" />;
-  if (mime.startsWith("text/") || mime.includes("pdf")) return <FileAttachmentIcon className="h-3.5 w-3.5" />;
-  if (mime.includes("zip") || mime.includes("tar")) return <Archive02Icon className="h-3.5 w-3.5" />;
-  return <File01Icon className="h-3.5 w-3.5" />;
+const MIME_CONFIG: Record<string, { icon: typeof File01Icon; color: string; bg: string }> = {
+  image:   { icon: Image01Icon,          color: "text-violet-500", bg: "bg-violet-50" },
+  text:    { icon: FileAttachmentIcon,   color: "text-blue-500",   bg: "bg-blue-50" },
+  pdf:     { icon: FileAttachmentIcon,   color: "text-red-500",    bg: "bg-red-50" },
+  archive: { icon: Archive02Icon,        color: "text-amber-500",  bg: "bg-amber-50" },
+  default: { icon: File01Icon,           color: "text-gray-400",   bg: "bg-gray-50" },
+};
+
+function getFileConfig(mime: string | null) {
+  if (!mime) return MIME_CONFIG.default;
+  if (mime.startsWith("image/")) return MIME_CONFIG.image;
+  if (mime.includes("pdf")) return MIME_CONFIG.pdf;
+  if (mime.startsWith("text/")) return MIME_CONFIG.text;
+  if (mime.includes("zip") || mime.includes("tar") || mime.includes("gz")) return MIME_CONFIG.archive;
+  return MIME_CONFIG.default;
 }
 
 function formatBytes(bytes: number | null): string {
   if (!bytes) return "—";
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function FilesPage() {
@@ -35,6 +54,7 @@ export default function FilesPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (q?: string) => {
@@ -53,9 +73,7 @@ export default function FilesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadFile(file: File) {
     setUploading(true);
     try {
       const fd = new FormData();
@@ -69,25 +87,42 @@ export default function FilesPage() {
     }
   }
 
+  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
+
   function handleSearchKey(e: React.KeyboardEvent) {
     if (e.key === "Enter") load(search);
   }
 
+  const totalSize = files.reduce((sum, f) => sum + (f.sizeBytes ?? 0), 0);
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div
+      className="flex flex-col h-full overflow-hidden animate-fade-in"
+      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={handleDrop}
+    >
       {/* Header */}
-      <div className="px-6 pt-5 pb-4 shrink-0" style={{ borderBottom: "1px solid var(--line)" }}>
-        <div className="flex items-end justify-between mb-4">
+      <div className="px-4 md:px-6 pt-4 pb-4 shrink-0 border-b border-gray-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h1 className="font-display italic text-2xl leading-none" style={{ color: "var(--amber)" }}>
-              Vault
-            </h1>
-            <p className="text-sm opacity-25 mt-1">
-              {files.length} files · local storage
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Vault</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {files.length} {files.length === 1 ? "file" : "files"} · {formatBytes(totalSize)} total
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {loading && <span className="text-sm opacity-30 animate-pulse">loading...</span>}
+            {loading && <span className="text-xs font-medium text-gray-400 animate-pulse">Loading...</span>}
             <input
               ref={fileInputRef}
               type="file"
@@ -95,125 +130,135 @@ export default function FilesPage() {
               onChange={handleUpload}
             />
             <Button
-              variant="ghost"
+              variant="default"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              style={{
-                background: "rgba(240,160,21,0.08)",
-                color: "var(--amber)",
-                border: "1px solid rgba(240,160,21,0.2)",
-              }}
+              className="text-xs gap-1.5"
             >
-              <Upload01Icon className="h-3.5 w-3.5" />
-              {uploading ? "uploading..." : "upload"}
+              <Upload01Icon className="size-3.5" />
+              {uploading ? "Uploading..." : "Upload file"}
             </Button>
           </div>
         </div>
 
         {/* Search */}
-        <div
-          className="flex items-center gap-2 px-3 py-2"
-          style={{ border: "1px solid var(--line)", borderRadius: "3px", background: "var(--navy)" }}
-        >
-          <Search01Icon className="h-3.5 w-3.5 opacity-30 shrink-0" />
+        <div className={cn(
+          "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border bg-white transition-all",
+          search
+            ? "border-gray-300 shadow-sm ring-1 ring-gray-100"
+            : "border-gray-200 hover:border-gray-300"
+        )}>
+          <Search01Icon className={cn(
+            "size-4 shrink-0 transition-colors",
+            search ? "text-gray-500" : "text-gray-300",
+          )} />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleSearchKey}
-            placeholder="search files..."
-            className="flex-1 bg-transparent border-none h-auto p-0 focus:ring-0 focus:border-none placeholder:opacity-20"
-            style={{ color: "hsl(210 18% 80%)" }}
+            placeholder="Search files by name..."
+            className="flex-1 bg-transparent border-none h-auto p-0 text-sm text-gray-900 focus-visible:ring-0 placeholder:text-gray-400"
           />
           {search && (
-            <Button
-              variant="ghost"
-              size="xs"
+            <button
               onClick={() => { setSearch(""); load(); }}
-              className="opacity-30 hover:opacity-60"
+              className="p-1 rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-50 transition-colors"
             >
-              clear
-            </Button>
+              <Cancel01Icon className="size-3.5" />
+            </button>
           )}
         </div>
       </div>
 
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 p-8 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50">
+            <Upload01Icon className="size-8 text-blue-400" />
+            <p className="text-sm font-medium text-blue-600">Drop file to upload</p>
+          </div>
+        </div>
+      )}
+
       {/* File list */}
       <div className="flex-1 overflow-y-auto">
         {files.length === 0 && !loading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <FolderOpenIcon className="h-8 w-8 opacity-10" />
-            <p className="text-sm opacity-25">vault is empty</p>
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="size-14 rounded-2xl bg-gray-50 flex items-center justify-center">
+              <FolderOpenIcon className="size-7 text-gray-300" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-500">Vault is empty</p>
+              <p className="text-xs text-gray-400 mt-1">Upload a file or drag and drop</p>
+            </div>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="opacity-40 hover:opacity-70 transition-opacity"
-              style={{ color: "var(--amber)" }}
+              className="text-xs gap-1.5"
             >
-              upload your first file →
+              <Upload01Icon className="size-3.5" />
+              Upload your first file
             </Button>
           </div>
         ) : (
-          <div>
+          <div className="px-4 md:px-6 py-2">
             {/* Column headers */}
-            <div
-              className="grid px-6 py-2 text-sm tracking-widest uppercase"
-              style={{
-                gridTemplateColumns: "1fr 80px 80px",
-                color: "hsl(215 12% 40%)",
-                borderBottom: "1px solid var(--line)",
-              }}
+            <div className="grid px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
+              style={{ gridTemplateColumns: "1fr 80px 90px" }}
             >
               <span>Name</span>
               <span className="text-right">Size</span>
-              <span className="text-right">Date</span>
+              <span className="text-right">Added</span>
             </div>
-            {files.map((f) => (
-              <div
-                key={f.id}
-                className="grid px-6 py-2.5 hover:bg-white/[0.02] transition-colors"
-                style={{
-                  gridTemplateColumns: "1fr 80px 80px",
-                  borderBottom: "1px solid var(--line)",
-                }}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span style={{ color: "hsl(215 12% 40%)" }}>
-                    <FileIcon mime={f.mimeType} />
-                  </span>
-                  <span
-                    className="text-sm truncate"
-                    style={{ color: "hsl(210 18% 80%)" }}
+
+            {/* File rows */}
+            <div className="space-y-0.5">
+              {files.map((f) => {
+                const config = getFileConfig(f.mimeType);
+                const Icon = config.icon;
+                return (
+                  <div
+                    key={f.id}
+                    className="grid items-center px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group cursor-default"
+                    style={{ gridTemplateColumns: "1fr 80px 90px" }}
                   >
-                    {f.fileName}
-                  </span>
-                  {(f.tags ?? []).length > 0 && (
-                    <div className="flex gap-1 shrink-0">
-                      {(f.tags ?? []).slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-sm px-1 py-0.5 rounded-sm"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "hsl(215 12% 45%)" }}
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={cn(
+                        "size-8 rounded-lg flex items-center justify-center shrink-0",
+                        config.bg,
+                      )}>
+                        <Icon className={cn("size-4", config.color)} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-800 truncate">
+                          {f.fileName}
+                        </p>
+                        {(f.tags ?? []).length > 0 && (
+                          <div className="flex gap-1 mt-0.5">
+                            {(f.tags ?? []).slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <span
-                  className="text-sm text-right self-center opacity-30"
-                >
-                  {formatBytes(f.sizeBytes)}
-                </span>
-                <span
-                  className="text-sm text-right self-center opacity-30"
-                >
-                  {new Date(f.createdAt).toLocaleDateString("en", { month: "short", day: "numeric" })}
-                </span>
-              </div>
-            ))}
+                    <span className="text-xs text-gray-400 text-right tabular-nums">
+                      {formatBytes(f.sizeBytes)}
+                    </span>
+                    <span className="text-xs text-gray-400 text-right">
+                      {new Date(f.createdAt).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

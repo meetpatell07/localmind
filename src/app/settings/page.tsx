@@ -3,15 +3,30 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Mail01Icon, Calendar03Icon, FileAttachmentIcon, CheckmarkCircle02Icon, CircleIcon,
-  RefreshIcon, Unlink01Icon, LinkSquare02Icon, AlertDiamondIcon, InformationCircleIcon,
-  UserIcon, FloppyDiskIcon, Loading03Icon, Logout01Icon,
+  Mail01Icon,
+  Calendar03Icon,
+  FileAttachmentIcon,
+  CheckmarkCircle02Icon,
+  CircleIcon,
+  RefreshIcon,
+  Unlink01Icon,
+  LinkSquare02Icon,
+  AlertDiamondIcon,
+  InformationCircleIcon,
+  UserIcon,
+  FloppyDiskIcon,
+  Loading03Icon,
+  Logout01Icon,
+  Globe02Icon,
+  SmartPhone01Icon,
+  Location01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface ConnectorStatus {
   connected: boolean;
@@ -39,31 +54,46 @@ interface UserProfileData {
   updatedAt?: string | null;
 }
 
-// ── Field component ───────────────────────────────────────────────────────────
+// ── Field Component ──────────────────────────────────────────────────────────
 
 function Field({
-  label, value, onChange, placeholder, type = "text",
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  icon,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm tracking-wider uppercase opacity-40">{label}</label>
-      <Input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
+      <label className="text-xs font-medium text-gray-500">{label}</label>
+      <div className="relative">
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
+        )}
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={cn(
+            "bg-white border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:ring-gray-200 h-9",
+            icon && "pl-9",
+          )}
+        />
+      </div>
     </div>
   );
 }
 
-// ── Profile section ───────────────────────────────────────────────────────────
+// ── Profile Section ──────────────────────────────────────────────────────────
 
 function ProfileSection() {
   const [profile, setProfile] = useState<UserProfileData>({});
@@ -77,7 +107,7 @@ function ProfileSection() {
     void (async () => {
       try {
         const res = await fetch("/api/user/profile");
-        const data = await res.json() as { profile: UserProfileData | null };
+        const data = (await res.json()) as { profile: UserProfileData | null };
         const p = data.profile ?? {};
         setProfile(p);
         setForm(p);
@@ -93,7 +123,7 @@ function ProfileSection() {
 
   function isDirty() {
     return (Object.keys(form) as (keyof UserProfileData)[]).some(
-      (k) => (form[k] ?? "") !== (profile[k] ?? "")
+      (k) => (form[k] ?? "") !== (profile[k] ?? ""),
     );
   }
 
@@ -105,7 +135,7 @@ function ProfileSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = await res.json() as { profile: UserProfileData };
+      const data = (await res.json()) as { profile: UserProfileData };
       setProfile(data.profile);
       setForm(data.profile);
       setSaved(true);
@@ -118,8 +148,18 @@ function ProfileSection() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <Loading03Icon className="h-4 w-4 animate-spin" style={{ color: "hsl(215 12% 35%)" }} />
+      <div className="space-y-5">
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-5 space-y-4 animate-pulse">
+          <div className="h-4 bg-gray-100 rounded w-24" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 bg-gray-100 rounded w-16" />
+                <div className="h-9 bg-gray-50 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -127,66 +167,130 @@ function ProfileSection() {
   const v = (k: keyof UserProfileData) => String(form[k] ?? "");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-2xl">
       {/* Identity */}
-      <div
-        className="rounded-sm p-5 space-y-4"
-        style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <UserIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-          <span className="text-sm tracking-widest uppercase opacity-40">Identity</span>
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-5 space-y-4">
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="size-7 rounded-lg bg-amber-50 flex items-center justify-center">
+            <UserIcon className="size-3.5 text-amber-500" />
+          </div>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Identity
+          </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Full name"    value={v("displayName")} onChange={(v) => set("displayName", v)} placeholder="Meet Patel" />
-          <Field label="Email"        value={v("email")}       onChange={(v) => set("email", v)}       placeholder="meet@example.com" type="email" />
-          <Field label="Phone"        value={v("phone")}       onChange={(v) => set("phone", v)}       placeholder="+1 555 000 0000" type="tel" />
+          <Field
+            label="Full name"
+            value={v("displayName")}
+            onChange={(val) => set("displayName", val)}
+            placeholder="Meet Patel"
+            icon={<UserIcon className="size-3.5" />}
+          />
+          <Field
+            label="Email"
+            value={v("email")}
+            onChange={(val) => set("email", val)}
+            placeholder="meet@example.com"
+            type="email"
+            icon={<Mail01Icon className="size-3.5" />}
+          />
+          <Field
+            label="Phone"
+            value={v("phone")}
+            onChange={(val) => set("phone", val)}
+            placeholder="+1 555 000 0000"
+            type="tel"
+            icon={<SmartPhone01Icon className="size-3.5" />}
+          />
+          <Field
+            label="Address"
+            value={v("address")}
+            onChange={(val) => set("address", val)}
+            placeholder="City, Country"
+            icon={<Location01Icon className="size-3.5" />}
+          />
         </div>
-        <Field label="Address"        value={v("address")}     onChange={(v) => set("address", v)}     placeholder="City, Country" />
       </div>
 
       {/* Social / Professional */}
-      <div
-        className="rounded-sm p-5 space-y-4"
-        style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}
-      >
-        <span className="text-sm tracking-widest uppercase opacity-40">Social &amp; professional</span>
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-5 space-y-4">
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="size-7 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Globe02Icon className="size-3.5 text-blue-500" />
+          </div>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Social &amp; Professional
+          </span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="LinkedIn URL"    value={v("linkedin")}     onChange={(v) => set("linkedin", v)}     placeholder="https://linkedin.com/in/..." />
-          <Field label="Portfolio / Web" value={v("portfolioWeb")} onChange={(v) => set("portfolioWeb", v)} placeholder="https://yoursite.com" />
-          <Field label="Instagram"       value={v("instagram")}    onChange={(v) => set("instagram", v)}    placeholder="@handle" />
-          <Field label="X (Twitter)"     value={v("xHandle")}      onChange={(v) => set("xHandle", v)}      placeholder="@handle" />
-          <Field label="Facebook"        value={v("facebook")}     onChange={(v) => set("facebook", v)}     placeholder="https://facebook.com/..." />
+          <Field
+            label="LinkedIn URL"
+            value={v("linkedin")}
+            onChange={(val) => set("linkedin", val)}
+            placeholder="https://linkedin.com/in/..."
+          />
+          <Field
+            label="Portfolio / Website"
+            value={v("portfolioWeb")}
+            onChange={(val) => set("portfolioWeb", val)}
+            placeholder="https://yoursite.com"
+          />
+          <Field
+            label="Instagram"
+            value={v("instagram")}
+            onChange={(val) => set("instagram", val)}
+            placeholder="@handle"
+          />
+          <Field
+            label="X (Twitter)"
+            value={v("xHandle")}
+            onChange={(val) => set("xHandle", val)}
+            placeholder="@handle"
+          />
+          <Field
+            label="Facebook"
+            value={v("facebook")}
+            onChange={(val) => set("facebook", val)}
+            placeholder="https://facebook.com/..."
+          />
         </div>
       </div>
 
-      {/* Save */}
-      <div className="flex items-center justify-between">
-        {profile.updatedAt && (
-          <span className="text-sm opacity-25">
-            Last saved {new Date(profile.updatedAt).toLocaleDateString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
-        <div className="flex items-center gap-3 ml-auto">
+      {/* Save Bar */}
+      <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-white shadow-sm px-5 py-3">
+        <div>
+          {profile.updatedAt && (
+            <span className="text-xs text-gray-400">
+              Last saved{" "}
+              {new Date(profile.updatedAt).toLocaleDateString("en", {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
           {saved && (
-            <span className="text-sm" style={{ color: "#4ade80" }}>
-              ✓ saved
+            <span className="text-xs font-medium text-emerald-500 flex items-center gap-1">
+              <CheckmarkCircle02Icon className="size-3.5" />
+              Saved
             </span>
           )}
           <Button
-            variant="ghost"
+            variant="default"
             size="sm"
             onClick={() => void handleSave()}
             disabled={saving || !isDirty()}
-            className="transition-all disabled:opacity-30"
-            style={{
-              background: "var(--amber-dim)",
-              border: "1px solid rgba(240,160,21,0.25)",
-              color: "var(--amber)",
-            }}
+            className="gap-1.5 disabled:opacity-30"
           >
-            {saving ? <Loading03Icon className="h-3 w-3 animate-spin" /> : <FloppyDiskIcon className="h-3 w-3" />}
-            {saving ? "saving..." : "Save changes"}
+            {saving ? (
+              <Loading03Icon className="size-3 animate-spin" />
+            ) : (
+              <FloppyDiskIcon className="size-3" />
+            )}
+            {saving ? "Saving..." : "Save changes"}
           </Button>
         </div>
       </div>
@@ -194,13 +298,15 @@ function ProfileSection() {
   );
 }
 
-// ── Connector card ────────────────────────────────────────────────────────────
+// ── Connector Card ───────────────────────────────────────────────────────────
 
 interface ConnectorCardProps {
   name: string;
   description: string;
   icon: React.ReactNode;
-  accentColor: string;
+  accentBg: string;
+  accentText: string;
+  accentBorder: string;
   status: ConnectorStatus | null;
   connectHref?: string;
   onDisconnect?: () => void;
@@ -208,121 +314,137 @@ interface ConnectorCardProps {
 }
 
 function ConnectorCard({
-  name, description, icon, accentColor, status,
-  connectHref, onDisconnect, comingSoon,
+  name,
+  description,
+  icon,
+  accentBg,
+  accentText,
+  accentBorder,
+  status,
+  connectHref,
+  onDisconnect,
+  comingSoon,
 }: ConnectorCardProps) {
-  const connected = status?.connected ?? false;
+  const isConnected = status?.connected ?? false;
   const [disconnecting, setDisconnecting] = useState(false);
 
   async function handleDisconnect() {
     if (!onDisconnect) return;
     setDisconnecting(true);
-    try { await onDisconnect(); } finally { setDisconnecting(false); }
+    try {
+      await onDisconnect();
+    } finally {
+      setDisconnecting(false);
+    }
   }
 
   return (
     <div
-      className="rounded-sm p-5 flex flex-col gap-4 relative overflow-hidden"
-      style={{
-        background: "var(--surface-raised)",
-        border: `1px solid ${connected ? accentColor + "33" : "var(--line)"}`,
-      }}
-    >
-      {connected && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${accentColor}08, transparent)` }}
-        />
+      className={cn(
+        "rounded-xl border bg-white shadow-sm p-5 flex flex-col gap-4 transition-all",
+        isConnected ? accentBorder : "border-gray-100",
       )}
-
-      <div className="flex items-start justify-between gap-3 relative">
+    >
+      {/* Top Row */}
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0"
-            style={{
-              background: connected ? accentColor + "18" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${connected ? accentColor + "33" : "var(--line)"}`,
-            }}
+            className={cn(
+              "size-10 rounded-xl flex items-center justify-center shrink-0 border",
+              isConnected ? `${accentBg} ${accentBorder}` : "bg-gray-50 border-gray-100",
+            )}
           >
-            <span style={{ color: connected ? accentColor : "hsl(215 12% 40%)" }}>{icon}</span>
+            <span className={isConnected ? accentText : "text-gray-400"}>{icon}</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: "hsl(210 18% 85%)" }}>{name}</span>
+              <span className="text-sm font-semibold text-gray-800">{name}</span>
               {comingSoon && (
-                <span className="text-sm px-1.5 py-0.5 rounded-sm" style={{ background: "rgba(255,255,255,0.04)", color: "hsl(215 12% 40%)" }}>
-                  soon
+                <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                  Soon
                 </span>
               )}
             </div>
-            <p className="text-sm mt-0.5" style={{ color: "hsl(215 12% 40%)" }}>{description}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{description}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-          {connected ? (
+        <div className="flex items-center gap-1.5 shrink-0 mt-1">
+          {isConnected ? (
             <>
-              <CheckmarkCircle02Icon className="h-3.5 w-3.5" style={{ color: "#4ade80" }} />
-              <span className="text-sm" style={{ color: "#4ade80" }}>connected</span>
+              <CheckmarkCircle02Icon className="size-3.5 text-emerald-500" />
+              <span className="text-xs font-medium text-emerald-600">Connected</span>
             </>
           ) : (
             <>
-              <CircleIcon className="h-3 w-3 opacity-20" />
-              <span className="text-sm opacity-30">not connected</span>
+              <CircleIcon className="size-3 text-gray-300" />
+              <span className="text-xs text-gray-400">Not connected</span>
             </>
           )}
         </div>
       </div>
 
-      {connected && (
-        <div className="rounded-sm px-3 py-2 space-y-1 relative" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--line)" }}>
+      {/* Connection Details */}
+      {isConnected && (
+        <div className="rounded-lg bg-gray-50 border border-gray-100 px-3.5 py-2.5 space-y-1.5">
           {status?.email && (
             <div className="flex items-center justify-between">
-              <span className="text-sm opacity-40">account</span>
-              <span className="text-sm" style={{ color: "hsl(210 18% 70%)" }}>{status.email}</span>
+              <span className="text-xs text-gray-400">Account</span>
+              <span className="text-xs font-medium text-gray-700">{status.email}</span>
             </div>
           )}
           {status?.connectedAt && (
             <div className="flex items-center justify-between">
-              <span className="text-sm opacity-40">connected</span>
-              <span className="text-sm" style={{ color: "hsl(210 18% 70%)" }}>
-                {new Date(status.connectedAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
+              <span className="text-xs text-gray-400">Connected</span>
+              <span className="text-xs text-gray-600">
+                {new Date(status.connectedAt).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </span>
             </div>
           )}
           {status?.lastSyncAt && (
             <div className="flex items-center justify-between">
-              <span className="text-sm opacity-40">last sync</span>
-              <span className="text-sm" style={{ color: "hsl(210 18% 70%)" }}>
-                {new Date(status.lastSyncAt).toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              <span className="text-xs text-gray-400">Last sync</span>
+              <span className="text-xs text-gray-600">
+                {new Date(status.lastSyncAt).toLocaleString("en", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             </div>
           )}
         </div>
       )}
 
-      <div className="flex items-center gap-2 relative">
+      {/* Actions */}
+      <div className="flex items-center gap-2">
         {comingSoon ? (
-          <span className="text-sm opacity-20">coming soon</span>
-        ) : connected ? (
+          <span className="text-xs text-gray-300">Coming soon</span>
+        ) : isConnected ? (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => void handleDisconnect()}
             disabled={disconnecting}
-            className="transition-all disabled:opacity-40"
-            style={{ border: "1px solid rgba(248,113,113,0.2)", color: "rgba(248,113,113,0.7)", background: "rgba(248,113,113,0.04)" }}
+            className="text-xs gap-1.5 text-red-500 border-red-200 bg-red-50/50 hover:bg-red-50 hover:border-red-300 disabled:opacity-40 transition-colors"
           >
-            <Unlink01Icon className="h-3 w-3" />
-            {disconnecting ? "disconnecting..." : "disconnect"}
+            <Unlink01Icon className="size-3" />
+            {disconnecting ? "Disconnecting..." : "Disconnect"}
           </Button>
         ) : (
           <a
             href={connectHref}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-sm transition-all"
-            style={{ border: `1px solid ${accentColor}33`, color: accentColor, background: accentColor + "0d" }}
+            className={cn(
+              "inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-lg border transition-colors",
+              `${accentBg} ${accentBorder} ${accentText} hover:opacity-90`,
+            )}
           >
-            <LinkSquare02Icon className="h-3 w-3" />
-            connect
+            <LinkSquare02Icon className="size-3" />
+            Connect
           </a>
         )}
       </div>
@@ -330,37 +452,65 @@ function ConnectorCard({
   );
 }
 
-// ── Setup guide ───────────────────────────────────────────────────────────────
+// ── Setup Guide ──────────────────────────────────────────────────────────────
 
 function SetupGuide({ show }: { show: boolean }) {
-  const [open, setOpen] = useState(show);
-  if (!open) return null;
+  const [isOpen, setIsOpen] = useState(show);
+  if (!isOpen) return null;
+
   return (
-    <div className="rounded-sm p-4 space-y-3" style={{ background: "rgba(240,160,21,0.05)", border: "1px solid rgba(240,160,21,0.15)" }}>
+    <div className="rounded-xl p-4 space-y-3 bg-amber-50/50 border border-amber-200/60">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <InformationCircleIcon className="h-3.5 w-3.5" style={{ color: "var(--amber)" }} />
-          <span className="text-sm" style={{ color: "var(--amber)" }}>Google OAuth setup required</span>
+          <InformationCircleIcon className="size-3.5 text-amber-600" />
+          <span className="text-xs font-semibold text-amber-700">
+            Google OAuth setup required
+          </span>
         </div>
-        <Button variant="ghost" size="xs" onClick={() => setOpen(false)} className="opacity-30 hover:opacity-60">dismiss</Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={() => setIsOpen(false)}
+          className="text-xs text-amber-500 hover:text-amber-700"
+        >
+          Dismiss
+        </Button>
       </div>
-      <ol className="space-y-1.5 text-sm" style={{ color: "hsl(210 18% 60%)" }}>
-        <li><span className="opacity-40 mr-2">1.</span>Go to <span style={{ color: "var(--amber)" }}>console.cloud.google.com</span> → New project → Enable Gmail API + Calendar API</li>
-        <li><span className="opacity-40 mr-2">2.</span>Create OAuth 2.0 credentials → Web Application → add redirect URI:</li>
-        <li className="ml-4 px-2 py-1 rounded-sm" style={{ background: "rgba(0,0,0,0.3)", color: "hsl(210 18% 75%)" }}>http://localhost:3000/api/connectors/google/callback</li>
-        <li><span className="opacity-40 mr-2">3.</span>Add to <span style={{ color: "var(--amber)" }}>.env.local</span>:
-          <div className="mt-1 ml-4 px-2 py-1 rounded-sm space-y-0.5" style={{ background: "rgba(0,0,0,0.3)", color: "hsl(210 18% 75%)" }}>
-            <div>GOOGLE_CLIENT_ID=your_client_id</div>
-            <div>GOOGLE_CLIENT_SECRET=your_client_secret</div>
+      <ol className="space-y-2 text-xs text-gray-600 leading-relaxed">
+        <li>
+          <span className="text-gray-400 mr-2 font-medium">1.</span>Go to{" "}
+          <span className="font-medium text-amber-700">console.cloud.google.com</span> → New
+          project → Enable Gmail API + Calendar API
+        </li>
+        <li>
+          <span className="text-gray-400 mr-2 font-medium">2.</span>Create OAuth 2.0 credentials →
+          Web Application → add redirect URI:
+        </li>
+        <li className="ml-5">
+          <code className="text-[11px] px-2.5 py-1.5 rounded-lg bg-gray-900 text-gray-300 block">
+            http://localhost:3000/api/connectors/google/callback
+          </code>
+        </li>
+        <li>
+          <span className="text-gray-400 mr-2 font-medium">3.</span>Add to{" "}
+          <span className="font-medium text-amber-700">.env.local</span>:
+          <div className="mt-1.5 ml-5">
+            <code className="text-[11px] px-2.5 py-1.5 rounded-lg bg-gray-900 text-gray-300 block space-y-0.5">
+              <div>GOOGLE_CLIENT_ID=your_client_id</div>
+              <div>GOOGLE_CLIENT_SECRET=your_client_secret</div>
+            </code>
           </div>
         </li>
-        <li><span className="opacity-40 mr-2">4.</span>Restart the dev server, then click <span style={{ color: "#4ade80" }}>connect</span> above</li>
+        <li>
+          <span className="text-gray-400 mr-2 font-medium">4.</span>Restart the dev server, then
+          click <span className="font-medium text-emerald-600">Connect</span> below
+        </li>
       </ol>
     </div>
   );
 }
 
-// ── Connections section ───────────────────────────────────────────────────────
+// ── Connections Section ──────────────────────────────────────────────────────
 
 function ConnectionsSection({
   google,
@@ -379,34 +529,41 @@ function ConnectionsSection({
 
   async function handleGoogleLogout() {
     await onDisconnect("google");
-    onBanner({ type: "success", message: "Google account disconnected — tokens removed from database" });
+    onBanner({
+      type: "success",
+      message: "Google account disconnected — tokens removed from database",
+    });
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 max-w-2xl">
+      {/* Section header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm tracking-widest uppercase" style={{ color: "hsl(215 12% 35%)" }}>
-          External services
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          External Services
         </span>
         <Button
           variant="ghost"
           size="xs"
           onClick={onRefresh}
-          className="opacity-30 hover:opacity-60 transition-opacity"
+          className="text-xs text-gray-400 hover:text-gray-700 transition-colors gap-1.5"
         >
-          <RefreshIcon className="h-3 w-3" />
-          refresh
+          <RefreshIcon className="size-3" />
+          Refresh
         </Button>
       </div>
 
       <SetupGuide show={showSetupGuide} />
 
-      <div className="grid grid-cols-1 gap-3">
+      {/* Connector Cards */}
+      <div className="space-y-3">
         <ConnectorCard
           name="Google (Gmail + Calendar)"
           description="Read emails, search inbox, access calendar events"
-          icon={<Mail01Icon className="h-5 w-5" />}
-          accentColor="#4285F4"
+          icon={<Mail01Icon className="size-5" />}
+          accentBg="bg-blue-50"
+          accentText="text-blue-600"
+          accentBorder="border-blue-200"
           status={google}
           connectHref="/api/connectors/google/auth"
           onDisconnect={handleGoogleLogout}
@@ -414,8 +571,10 @@ function ConnectionsSection({
         <ConnectorCard
           name="Notion"
           description="Search pages, create tasks, read databases"
-          icon={<FileAttachmentIcon className="h-5 w-5" />}
-          accentColor="#ffffff"
+          icon={<FileAttachmentIcon className="size-5" />}
+          accentBg="bg-gray-50"
+          accentText="text-gray-600"
+          accentBorder="border-gray-200"
           status={null}
           connectHref="/settings"
           comingSoon
@@ -423,48 +582,43 @@ function ConnectionsSection({
         <ConnectorCard
           name="Google Calendar"
           description="View and create events (included with Google)"
-          icon={<Calendar03Icon className="h-5 w-5" />}
-          accentColor="#0F9D58"
+          icon={<Calendar03Icon className="size-5" />}
+          accentBg="bg-emerald-50"
+          accentText="text-emerald-600"
+          accentBorder="border-emerald-200"
           status={google ? { connected: google.connected } : null}
           connectHref="/api/connectors/google/auth"
           comingSoon={!google?.connected}
         />
       </div>
 
-      {/* Logout card — only shown when Google is connected */}
+      {/* Logout Card */}
       {google?.connected && (
-        <div
-          className="rounded-sm p-4 flex items-center justify-between"
-          style={{ background: "rgba(248,113,113,0.04)", border: "1px solid rgba(248,113,113,0.15)" }}
-        >
+        <div className="rounded-xl p-4 flex items-center justify-between bg-red-50/40 border border-red-200/60">
           <div>
-            <p className="text-sm" style={{ color: "rgba(248,113,113,0.8)" }}>
-              Logout from Google
-            </p>
-            <p className="text-sm opacity-50 mt-0.5">
+            <p className="text-sm font-medium text-red-600">Logout from Google</p>
+            <p className="text-xs text-gray-500 mt-0.5">
               Revokes access &amp; removes all tokens from the database
             </p>
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => void handleGoogleLogout()}
-            className="transition-all"
-            style={{
-              border: "1px solid rgba(248,113,113,0.3)",
-              color: "rgba(248,113,113,0.9)",
-              background: "rgba(248,113,113,0.06)",
-            }}
+            className="text-xs gap-1.5 text-red-500 border-red-200 bg-red-50/50 hover:bg-red-100/60 transition-colors"
           >
-            <Logout01Icon className="h-3.5 w-3.5" />
-            logout
+            <Logout01Icon className="size-3.5" />
+            Logout
           </Button>
         </div>
       )}
 
-      <div className="rounded-sm p-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
-        <p className="text-sm tracking-widest uppercase opacity-30 mb-3">What LocalMind does with access</p>
-        <ul className="space-y-2 text-sm" style={{ color: "hsl(210 18% 55%)" }}>
+      {/* Info Card */}
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          What LocalMind does with access
+        </p>
+        <ul className="space-y-2.5">
           {[
             "Periodically embeds new emails/events into memory for semantic search",
             "Extracts entities (people, projects, deadlines) and builds the knowledge graph",
@@ -472,8 +626,8 @@ function ConnectionsSection({
             "All data stays in your local Neon DB — nothing sent to third parties",
             "Refresh tokens are stored encrypted in your database for persistent auth",
           ].map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <span style={{ color: "var(--amber)" }}>→</span>
+            <li key={item} className="flex items-start gap-2.5 text-xs text-gray-600 leading-relaxed">
+              <span className="text-amber-500 mt-0.5 shrink-0">→</span>
               {item}
             </li>
           ))}
@@ -483,20 +637,65 @@ function ConnectionsSection({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── About Section ────────────────────────────────────────────────────────────
+
+function AboutSection() {
+  const specs: [string, string][] = [
+    ["Model", "qwen3:8b (Ollama)"],
+    ["Embeddings", "nomic-embed-text (768 dims)"],
+    ["Database", "Neon Postgres + pgvector"],
+    ["Memory layers", "L1 episodic · L2 semantic · L3 graph · L4 profile"],
+    ["Decay", "Intelligent half-life per entity type"],
+    ["Auth tokens", "Stored in settings table (DB), auto-refreshed"],
+  ];
+
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-5 space-y-5">
+        {/* Logo + Version */}
+        <div className="flex items-center gap-3.5">
+          <div className="size-11 rounded-xl bg-gray-900 flex items-center justify-center shrink-0 shadow-sm">
+            <span className="text-white text-lg font-mono">◈</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">LocalMind</p>
+            <p className="text-xs text-gray-400 mt-0.5">v0.1.0 · localhost</p>
+          </div>
+        </div>
+
+        {/* Specs Table */}
+        <div className="rounded-lg bg-gray-50 border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+          {specs.map(([key, val]) => (
+            <div key={key} className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-xs text-gray-400">{key}</span>
+              <span className="text-xs font-medium text-gray-700">{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 
 function SettingsContent() {
   const searchParams = useSearchParams();
   const [connData, setConnData] = useState<ConnectorsPayload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [banner, setBanner] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/connectors/status");
-      setConnData(await res.json() as ConnectorsPayload);
-    } catch { /* ignore */ } finally {
+      setConnData((await res.json()) as ConnectorsPayload);
+    } catch {
+      /* ignore */
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -506,13 +705,18 @@ function SettingsContent() {
     const connected = searchParams.get("connected");
     const error = searchParams.get("error");
     if (connected === "google") {
-      setBanner({ type: "success", message: "Google account connected — refresh token saved to database" });
+      setBanner({
+        type: "success",
+        message: "Google account connected — refresh token saved to database",
+      });
       window.history.replaceState({}, "", "/settings");
     } else if (error) {
       const messages: Record<string, string> = {
-        access_denied:          "Access was denied. Please try again and grant the requested permissions.",
-        token_exchange_failed:  "Failed to exchange OAuth code. Check your GOOGLE_CLIENT_SECRET.",
-        missing_code:           "No authorization code received from Google.",
+        access_denied:
+          "Access was denied. Please try again and grant the requested permissions.",
+        token_exchange_failed:
+          "Failed to exchange OAuth code. Check your GOOGLE_CLIENT_SECRET.",
+        missing_code: "No authorization code received from Google.",
       };
       setBanner({ type: "error", message: messages[error] ?? `OAuth error: ${error}` });
       window.history.replaceState({}, "", "/settings");
@@ -527,22 +731,24 @@ function SettingsContent() {
   const google = connData?.connectors?.google ?? null;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden animate-fade-in">
       {/* Header */}
-      <div className="px-6 pt-5 pb-0 shrink-0">
-        <div className="flex items-end justify-between mb-4">
+      <div className="px-4 md:px-6 pt-4 pb-0 shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="font-display italic text-2xl leading-none text-brand">
-              Settings
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">profile · connectors · about</p>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Settings</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Profile, connectors, and system information.
+            </p>
           </div>
-          {loading && <span className="text-sm text-muted-foreground mb-1 animate-pulse">loading...</span>}
+          {loading && (
+            <span className="text-xs font-medium text-gray-400 animate-pulse">Loading...</span>
+          )}
         </div>
       </div>
 
       <Tabs defaultValue="profile" className="flex flex-col flex-1 overflow-hidden gap-0">
-        <div className="px-6 shrink-0">
+        <div className="px-4 md:px-6 shrink-0">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="connections">Connections</TabsTrigger>
@@ -551,24 +757,48 @@ function SettingsContent() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
           {/* Banner */}
           {banner && (
             <div
-              className="flex items-center gap-3 px-4 py-3 rounded-sm mb-5"
-              style={{
-                background: banner.type === "success" ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
-                border: `1px solid ${banner.type === "success" ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
-              }}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl mb-5 border",
+                banner.type === "success"
+                  ? "bg-emerald-50/60 border-emerald-200/60"
+                  : "bg-red-50/60 border-red-200/60",
+              )}
             >
-              {banner.type === "success"
-                ? <CheckmarkCircle02Icon className="h-3.5 w-3.5 shrink-0" style={{ color: "#4ade80" }} />
-                : <AlertDiamondIcon className="h-3.5 w-3.5 shrink-0" style={{ color: "#f87171" }} />
-              }
-              <span className="text-sm flex-1" style={{ color: banner.type === "success" ? "#4ade80" : "#f87171" }}>
+              {banner.type === "success" ? (
+                <CheckmarkCircle02Icon className="size-4 shrink-0 text-emerald-500" />
+              ) : (
+                <AlertDiamondIcon className="size-4 shrink-0 text-red-500" />
+              )}
+              <span
+                className={cn(
+                  "text-sm flex-1",
+                  banner.type === "success" ? "text-emerald-700" : "text-red-700",
+                )}
+              >
                 {banner.message}
               </span>
-              <Button variant="ghost" size="icon-xs" onClick={() => setBanner(null)} className="opacity-30 hover:opacity-60 shrink-0">×</Button>
+              <button
+                onClick={() => setBanner(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 p-0.5"
+              >
+                <svg
+                  className="size-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
           )}
 
@@ -587,34 +817,7 @@ function SettingsContent() {
           </TabsContent>
 
           <TabsContent value="about">
-            <div className="space-y-4">
-              <div className="rounded-sm p-5 space-y-4" style={{ background: "var(--surface-raised)", border: "1px solid var(--line)" }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0 bg-brand/10 border border-brand/20">
-                    <span className="text-brand text-lg font-mono">◈</span>
-                  </div>
-                  <div>
-                    <p className="text-sm text-foreground">LocalMind</p>
-                    <p className="text-sm text-muted-foreground">v0.1.0 · localhost</p>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  {[
-                    ["Model",          "qwen3:8b (Ollama)"],
-                    ["Embeddings",     "nomic-embed-text (768 dims)"],
-                    ["Database",       "Neon Postgres + pgvector"],
-                    ["Memory layers",  "L1 episodic · L2 semantic · L3 graph · L4 profile"],
-                    ["Decay",          "Intelligent half-life per entity type"],
-                    ["Auth tokens",    "Stored in settings table (DB), auto-refreshed"],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between">
-                      <span className="opacity-60">{k}</span>
-                      <span className="text-foreground/70">{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <AboutSection />
           </TabsContent>
         </div>
       </Tabs>
@@ -624,7 +827,13 @@ function SettingsContent() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full text-sm opacity-30">loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-full">
+          <Loading03Icon className="size-5 animate-spin text-gray-300" />
+        </div>
+      }
+    >
       <SettingsContent />
     </Suspense>
   );
