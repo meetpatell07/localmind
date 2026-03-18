@@ -84,10 +84,8 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-<<<<<<< Updated upstream
-    @apply bg-background text-foreground text-sm;
-=======
     @apply bg-background text-foreground;
     font-family: var(--font-body);
   }
@@ -100,7 +98,6 @@
   h6 {
     font-family: var(--font-heading);
     text-wrap: balance;
->>>>>>> Stashed changes
   }
 }
 
@@ -108,28 +105,36 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .shadow-transition {
     @apply transition-shadow;
   }
+
   .shadow-transition:hover {
     box-shadow: 0px 0px 42px -9px rgba(0, 0, 0, 0.1);
   }
+
   .animate-slide-up-fade {
     animation: slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .animate-fade-up {
     animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .animate-fade-in {
     animation: fade-in 0.2s ease-out forwards;
   }
+
   .animate-scale-in {
     animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   .shadow-minimal {
     box-shadow: 0px 0px 42px -9px rgba(0, 0, 0, 0.1);
   }
@@ -140,112 +145,13 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-<<<<<<< Updated upstream
-@theme {
-  --animate-hide: hide 150ms cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-down-and-fade: slideDownAndFade 150ms
-    cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-left-and-fade: slideLeftAndFade 150ms
-    cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-up-and-fade: slideUpAndFade 150ms
-    cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-right-and-fade: slideRightAndFade 150ms
-    cubic-bezier(0.16, 1, 0.3, 1);
-
-  @keyframes scale-in {
-    0% {
-      transform: scale(var(--from-scale, 0.95));
-    }
-    100% {
-      transform: scale(var(--to-scale, 1));
-    }
-  }
-
-  @keyframes fade-up {
-    0% {
-      opacity: 0;
-      transform: translateY(var(--offset, 2px));
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes fade-in {
-    0% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes hide {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-  @keyframes slideDownAndFade {
-    from {
-      opacity: 0;
-      transform: translateY(-6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @keyframes slideLeftAndFade {
-    from {
-      opacity: 0;
-      transform: translateX(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-  @keyframes slideUpAndFade {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @keyframes slideRightAndFade {
-    from {
-      opacity: 0;
-      transform: translateX(-6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-=======
 /* ── Animations ── */
 @keyframes fade-in {
   from {
@@ -413,4 +319,3 @@ a,
 .prose code {
   font-variant-numeric: tabular-nums;
 }
->>>>>>> Stashed changes
