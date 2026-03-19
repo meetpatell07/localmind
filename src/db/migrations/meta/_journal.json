@@ -50,6 +50,13 @@
       "when": 1773841437127,
       "tag": "0006_melted_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773891145008,
+      "tag": "0007_goofy_oracle",
+      "breakpoints": true
     }
   ]
 }

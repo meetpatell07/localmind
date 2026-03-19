@@ -1,10 +1,18 @@
 import { NextRequest } from "next/server";
 import path from "path";
 import fs from "fs/promises";
-import { ensureVaultDir, indexFile, listFiles, getVaultPath } from "@/vault/indexer";
+import { ensureVaultDir, indexFile, listFiles, getVaultPath, getFilesByCategory, updateFileAnalysis } from "@/vault/indexer";
+import { analyzeFile } from "@/vault/analyzer";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? undefined;
+  const view = req.nextUrl.searchParams.get("view");
+
+  if (view === "canvas") {
+    const grouped = await getFilesByCategory();
+    return Response.json({ grouped });
+  }
+
   const files = await listFiles(q);
   return Response.json({ files });
 }
@@ -39,7 +47,18 @@ export async function POST(req: NextRequest) {
     relativePath,
     mimeType: file.type || "application/octet-stream",
     sizeBytes: buffer.length,
+    source: "web",
   });
+
+  // Fire-and-forget AI analysis — never blocks the upload response
+  analyzeFile({
+    fileId: record.id,
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    absolutePath: fullPath,
+  })
+    .then((analysis) => updateFileAnalysis(record.id, analysis))
+    .catch(() => {});
 
   return Response.json({ file: record }, { status: 201 });
 }
