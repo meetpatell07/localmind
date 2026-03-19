@@ -1,43 +1,75 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/chat-input";
-import { AlertCircleIcon, RefreshIcon } from "hugeicons-react";
+import { SessionSidebar } from "@/components/chat/session-sidebar";
+import { SessionTranscript } from "@/components/chat/session-transcript";
+import { AlertCircleIcon, RefreshIcon, SidebarLeft01Icon } from "hugeicons-react";
+import { cn } from "@/lib/utils";
 
-export default function ChatPage() {
-  const sessionIdRef = useRef<string | null>(null);
-  const [ollamaOnline, setOllamaOnline] = useState(true);
-  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const { messages, sendMessage, status, stop, error } = useChat({
+function LiveChat({
+  sessionIdRef,
+  ollamaOnline,
+  error,
+  onCheckOllama,
+}: {
+  sessionIdRef: React.RefObject<string | null>;
+  ollamaOnline: boolean;
+  error: Error | undefined;
+  onCheckOllama: () => void;
+}) {
+  const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: () => ({ sessionId: sessionIdRef.current }),
     }),
-    onFinish() {
-      setOllamaOnline(true);
-    },
-    onError() {
-      setOllamaOnline(false);
-      retryRef.current = setTimeout(checkOllama, 3000);
-    },
   });
 
-  useEffect(() => {
-    fetch("/api/health")
-      .then((r) => setOllamaOnline(r.ok))
-      .catch(() => setOllamaOnline(false));
+  const isStreaming = status === "streaming" || status === "submitted";
 
-    fetch("/api/memory?action=create-session", { method: "POST" })
-      .then((r) => r.json())
-      .then((d: { sessionId?: string }) => {
-        if (d.sessionId) sessionIdRef.current = d.sessionId;
-      })
-      .catch(() => {});
-  }, []);
+  return (
+    <>
+      {(!ollamaOnline || error) && (
+        <div className="flex items-center gap-3 px-4 md:px-6 py-2 shrink-0 bg-red-50/50 border-b border-red-100">
+          <AlertCircleIcon className="size-3.5 shrink-0 text-red-500" />
+          <span className="text-xs font-medium text-red-600">
+            Ollama is starting up — responses will resume shortly
+          </span>
+          <button
+            className="ml-auto flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors"
+            onClick={onCheckOllama}
+          >
+            <RefreshIcon className="size-3" />
+            Retry
+          </button>
+        </div>
+      )}
+      <MessageList
+        messages={messages}
+        isStreaming={isStreaming}
+        onSendMessage={sendMessage}
+      />
+      <ChatInput
+        onSendMessage={sendMessage}
+        isStreaming={isStreaming}
+        stop={stop}
+        disabled={!ollamaOnline && !isStreaming}
+      />
+    </>
+  );
+}
+
+export default function ChatPage() {
+  const sessionIdRef = useRef<string | null>(null);
+  const [ollamaOnline, setOllamaOnline] = useState(true);
+  const [chatKey, setChatKey] = useState(0);
+  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sessionRefreshTick, setSessionRefreshTick] = useState(0);
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function checkOllama() {
     try {
@@ -49,72 +81,99 @@ export default function ChatPage() {
     }
   }
 
+  async function createNewSession() {
+    const res = await fetch("/api/sessions", { method: "POST" });
+    const data = (await res.json()) as { sessionId?: string };
+    return data.sessionId ?? null;
+  }
+
+  async function initSession() {
+    const sessionId = await createNewSession();
+    if (sessionId) sessionIdRef.current = sessionId;
+  }
+
   useEffect(() => {
+    fetch("/api/health")
+      .then((r) => setOllamaOnline(r.ok))
+      .catch(() => setOllamaOnline(false));
+
+    initSession();
+
     return () => {
       if (retryRef.current) clearTimeout(retryRef.current);
-      const sid = sessionIdRef.current;
-      if (sid && messages.length >= 4) {
-        fetch("/api/memory?action=summarize-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: sid }),
-          keepalive: true,
-        }).catch(() => {});
-      }
     };
-  }, [messages.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const isStreaming = status === "streaming" || status === "submitted";
+  const handleNewSession = useCallback(async () => {
+    const sessionId = await createNewSession();
+    if (sessionId) sessionIdRef.current = sessionId;
+    setViewingSessionId(null);
+    setChatKey((k) => k + 1);
+    setSessionRefreshTick((t) => t + 1);
+  }, []);
+
+  const handleSelectSession = useCallback((id: string | null) => {
+    setViewingSessionId(id);
+  }, []);
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-4 shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Chat</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {messages.length > 0
-              ? `${messages.length} message${messages.length !== 1 ? "s" : ""} this session`
-              : "Start a new conversation with LocalMind."}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className={`size-1.5 rounded-full ${ollamaOnline ? "bg-emerald-500" : "bg-red-400"}`} />
-          <span className="text-xs font-medium text-gray-500">
-            {ollamaOnline ? "Online" : "Offline"}
-          </span>
-        </div>
+    <div className="flex h-full overflow-hidden animate-fade-in">
+      {/* Sessions sidebar */}
+      <div
+        className={cn(
+          "transition-all duration-200 overflow-hidden shrink-0",
+          sidebarOpen ? "w-64" : "w-0"
+        )}
+      >
+        <SessionSidebar
+          activeSessionId={viewingSessionId}
+          onSelectSession={handleSelectSession}
+          onNewSession={handleNewSession}
+          refreshTrigger={sessionRefreshTick}
+        />
       </div>
 
-      {/* Offline banner */}
-      {(!ollamaOnline || error) && (
-        <div className="flex items-center gap-3 px-4 md:px-6 py-2 shrink-0 bg-red-50/50 border-b border-red-100">
-          <AlertCircleIcon className="size-3.5 shrink-0 text-red-500" />
-          <span className="text-xs font-medium text-red-600">
-            Ollama is starting up — responses will resume shortly
-          </span>
+      {/* Main area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 md:px-6 py-4 shrink-0 border-b border-gray-100">
           <button
-            className="ml-auto flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors"
-            onClick={checkOllama}
+            onClick={() => setSidebarOpen((o) => !o)}
+            className="size-7 rounded-md hover:bg-gray-100 flex items-center justify-center transition-colors shrink-0"
+            title="Toggle sessions panel"
           >
-            <RefreshIcon className="size-3" />
-            Retry
+            <SidebarLeft01Icon className="size-4 text-gray-500" />
           </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold tracking-tight text-gray-900 leading-none">
+              {viewingSessionId ? "Past session" : "Chat"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className={`size-1.5 rounded-full ${ollamaOnline ? "bg-emerald-500" : "bg-red-400"}`} />
+            <span className="text-xs font-medium text-gray-500">
+              {ollamaOnline ? "Online" : "Offline"}
+            </span>
+          </div>
         </div>
-      )}
 
-      <MessageList
-        messages={messages}
-        isStreaming={isStreaming}
-        onSendMessage={sendMessage}
-      />
-
-      <ChatInput
-        onSendMessage={sendMessage}
-        isStreaming={isStreaming}
-        stop={stop}
-        disabled={!ollamaOnline && !isStreaming}
-      />
+        {/* Content */}
+        {viewingSessionId ? (
+          <SessionTranscript
+            sessionId={viewingSessionId}
+            onBack={() => setViewingSessionId(null)}
+          />
+        ) : (
+          <LiveChat
+            key={chatKey}
+            sessionIdRef={sessionIdRef}
+            ollamaOnline={ollamaOnline}
+            error={undefined}
+            onCheckOllama={checkOllama}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -224,6 +224,11 @@
   }
 }
 
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
 /* ── Utility classes ── */
 .animate-fade-in {
   animation: fade-in 0.4s ease-out both;

@@ -31,6 +31,15 @@ function getGreeting(): string {
   return "Good evening";
 }
 
+/** True if a UIMessage has any non-empty text content in its parts. */
+function hasTextContent(msg: UIMessage): boolean {
+  return (
+    msg.parts?.some(
+      (p) => p.type === "text" && !!(p as { text: string }).text?.trim(),
+    ) ?? false
+  );
+}
+
 export function MessageList({ messages, isStreaming, onSendMessage }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +72,7 @@ export function MessageList({ messages, isStreaming, onSendMessage }: MessageLis
                   className={cn(
                     "group flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium",
                     "bg-white hover:shadow-sm transition-all duration-200",
-                    "text-gray-700 border-gray-200 hover:border-gray-300"
+                    "text-gray-700 border-gray-200 hover:border-gray-300",
                   )}
                 >
                   <Icon className="size-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -77,24 +86,47 @@ export function MessageList({ messages, isStreaming, onSendMessage }: MessageLis
     );
   }
 
+  const lastMsg = messages[messages.length - 1];
+
+  // Show pulsing dots when:
+  //   (a) submitted/streaming and no assistant message exists yet, OR
+  //   (b) an assistant message exists but has zero text parts yet (Ollama still warming up)
+  const showThinking =
+    isStreaming &&
+    (lastMsg?.role !== "assistant" || !hasTextContent(lastMsg));
+
+  // The last assistant message is actively streaming tokens in
+  const streamingMsgId =
+    isStreaming && lastMsg?.role === "assistant" && hasTextContent(lastMsg)
+      ? lastMsg.id
+      : null;
+
   return (
     <div className="flex-1 overflow-y-auto px-4 md:px-6">
       <div className="space-y-5 py-6 max-w-3xl mx-auto">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            isStreamingThis={message.id === streamingMsgId}
+          />
         ))}
-        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-          <div className="flex gap-3">
+
+        {/* Thinking / warmup indicator */}
+        {showThinking && (
+          <div className="flex gap-3 animate-fade-in">
             <div className="size-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
               <SparklesIcon className="size-3.5 text-gray-400 animate-pulse" />
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-2">
-              <span className="size-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
-              <span className="size-1.5 rounded-full bg-gray-300 animate-bounce [animation-delay:150ms]" />
-              <span className="size-1.5 rounded-full bg-gray-200 animate-bounce [animation-delay:300ms]" />
+            <div className="flex items-center gap-2 px-1 py-2">
+              <span className="size-2 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
+              <span className="size-2 rounded-full bg-gray-300 animate-bounce [animation-delay:160ms]" />
+              <span className="size-2 rounded-full bg-gray-200 animate-bounce [animation-delay:320ms]" />
+              <span className="text-xs text-gray-400 ml-1.5 font-medium">Thinking…</span>
             </div>
           </div>
         )}
+
         <div ref={bottomRef} />
       </div>
     </div>

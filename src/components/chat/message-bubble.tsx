@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 
 interface MessageBubbleProps {
   message: UIMessage;
+  /** True for the single assistant message currently receiving tokens. */
+  isStreamingThis?: boolean;
 }
 
 type ToolState = "partial-call" | "call" | "result";
@@ -110,7 +112,7 @@ function ToolCallBadge({ part }: { part: ToolInvocationPart }) {
   );
 }
 
-function TextBlock({ text }: { text: string }) {
+function TextBlock({ text, showCursor }: { text: string; showCursor?: boolean }) {
   if (!text.trim()) return null;
   return (
     <div className="text-sm leading-relaxed text-gray-800">
@@ -135,11 +137,14 @@ function TextBlock({ text }: { text: string }) {
       >
         {text}
       </ReactMarkdown>
+      {showCursor && (
+        <span className="inline-block w-0.5 h-3.5 bg-gray-400 ml-0.5 align-middle animate-[blink_1s_step-end_infinite]" />
+      )}
     </div>
   );
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, isStreamingThis = false }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
   if (isUser) {
@@ -177,11 +182,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           AI
         </div>
         <div className="flex flex-col gap-1 max-w-[80%] pt-0.5">
-          <TextBlock text={text} />
+          <TextBlock text={text} showCursor={isStreamingThis} />
         </div>
       </div>
     );
   }
+
+  // Find index of the last text part so only that one gets the cursor
+  const lastTextIdx = parts.reduce(
+    (acc, p, i) => (p.type === "text" ? i : acc),
+    -1,
+  );
 
   return (
     <div className="flex gap-3 w-full flex-row">
@@ -191,7 +202,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div className="flex flex-col gap-1 max-w-[80%] pt-0.5">
         {parts.map((part, i) => {
           if (part.type === "text") {
-            return <TextBlock key={i} text={(part as { text: string }).text} />;
+            return (
+              <TextBlock
+                key={i}
+                text={(part as { text: string }).text}
+                showCursor={isStreamingThis && i === lastTextIdx}
+              />
+            );
           }
           if (part.type === "tool-invocation") {
             return <ToolCallBadge key={i} part={part as unknown as ToolInvocationPart} />;

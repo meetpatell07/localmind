@@ -1,7 +1,42 @@
 import { db } from "@/db";
 import { conversations, sessions } from "@/db/schema";
-import { eq, desc, isNotNull } from "drizzle-orm";
+import { eq, desc, isNotNull, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
+
+export interface SessionListItem {
+  id: string;
+  channel: string;
+  startedAt: Date;
+  turnCount: number | null;
+  summary: string | null;
+}
+
+export async function getSessionList(limit = 50): Promise<SessionListItem[]> {
+  const rows = await db
+    .select({
+      id: sessions.id,
+      channel: sessions.channel,
+      startedAt: sessions.startedAt,
+      turnCount: sessions.turnCount,
+      summary: sessions.summary,
+    })
+    .from(sessions)
+    .orderBy(desc(sessions.startedAt))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    id: r.id,
+    channel: r.channel ?? "chat",
+    startedAt: r.startedAt,
+    turnCount: r.turnCount,
+    summary: r.summary,
+  }));
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  await db.delete(conversations).where(eq(conversations.sessionId, sessionId));
+  await db.delete(sessions).where(eq(sessions.id, sessionId));
+}
 import { generateText } from "ai";
 import { extractionModel } from "@/agent/ollama";
 

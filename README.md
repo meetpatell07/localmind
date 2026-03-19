@@ -7,12 +7,16 @@ Personal AI agent running entirely on your machine. Persistent memory across con
 ## What it does
 
 - **Chat** with a local LLM (Qwen via Ollama) that actually remembers you across sessions
-- **4-layer memory**: episodic log → semantic embeddings → entity/relationship graph → user profile
+- **4-layer memory**: episodic log → semantic embeddings → entity/relationship graph → AI-generated user profile
 - **Intelligent decay**: facts fade over time based on type (events decay in 7 days, people stay sharp for 120 days); re-mentioning anything refreshes it
-- **Knowledge graph** visualisation — React Flow canvas showing entities and how they connect, colour-coded by type
+- **Interactive knowledge graph** — React Flow canvas showing entities and how they connect, colour-coded by type, with time-machine slider and search/filter
 - **Planner** — Kanban board + natural-language task creation + AI daily plan
 - **File vault** — local file browser with metadata search
 - **Voice** — push-to-talk via browser Web Speech API
+- **Gmail + Google Calendar** — read inbox, draft replies, check calendar events (OAuth, optional)
+- **Google Drive** — browse and search your Drive files from the dashboard (OAuth, optional)
+- **Email tab** — AI-powered email composition and inbox search
+- **Telegram bot** — chat with LocalMind from your phone; proactive task reminders sent automatically when deadlines approach
 
 ---
 
@@ -85,6 +89,9 @@ DATABASE_URL=postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen3:8b
 EMBEDDING_MODEL=nomic-embed-text
+
+# Local file vault directory
+VAULT_PATH=./vault
 ```
 
 ---
@@ -100,13 +107,29 @@ Then run the SQL from step 3 in the Neon SQL Editor to add the pgvector column a
 
 ---
 
-## 6. Connect Gmail + Google Calendar (optional)
+## 6. Start the dev server
 
-Required only if you want the Email tab (AI-powered inbox, draft replies, calendar checks).
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+The status dot in the sidebar shows Ollama's live status. If it's grey, start Ollama first:
+
+```bash
+ollama serve
+```
+
+---
+
+## Google (Gmail + Calendar + Drive) — optional
+
+Required for the Email tab and Google Drive tab.
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com)
 2. Create a new project
-3. Enable **Gmail API** and **Google Calendar API** (APIs & Services → Library)
+3. Enable **Gmail API**, **Google Calendar API**, and **Google Drive API** (APIs & Services → Library)
 4. Go to **Credentials** → **Create Credentials** → **OAuth 2.0 Client ID**
    - Application type: **Web Application**
    - Authorized redirect URIs: `http://localhost:3000/api/connectors/google/callback`
@@ -118,29 +141,13 @@ GOOGLE_CLIENT_SECRET=GOCSPX-your-secret
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-6. In the running app, go to **Settings → Connections** and click **Connect Google**
+6. Restart the dev server, then go to **Settings → Connections** and click **Connect Google**
 
 ---
 
-## 7. Start the dev server
+## Telegram Bot — optional
 
-```bash
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-The amber status dot in the top-right shows Ollama's live status. If it's grey, start Ollama first:
-
-```bash
-ollama serve
-```
-
----
-
-## Telegram Bot (optional)
-
-Connect a Telegram bot so you can chat with LocalMind from anywhere on your phone.
+Connect a Telegram bot to chat with LocalMind from your phone and receive proactive task reminders (tasks due within 2 hours trigger an automatic notification with memory context).
 
 ### Create the bot
 
@@ -165,15 +172,12 @@ ngrok http 3000
 ### Register the webhook
 
 ```bash
-# With your ngrok URL:
 curl "http://localhost:3000/api/telegram/setup?url=https://xxxx.ngrok-free.app"
-
-# Or just visit that URL in your browser
 ```
 
-You should see `"ok": true` in the response. Now message your bot on Telegram — it's live.
+You should see `"ok": true`. Now message your bot on Telegram — it's live.
 
-### Commands in the bot
+### Bot commands
 
 | Command | Action |
 |---|---|
@@ -182,7 +186,7 @@ You should see `"ok": true` in the response. Now message your bot on Telegram �
 | `/clear` | Reset conversation history |
 | `/help` | Show all commands |
 
-Or just talk naturally — the bot has the same tools as the web chat (memory, tasks, email/calendar if connected).
+Or just talk naturally — the bot shares the same memory, tasks, and tools as the web chat.
 
 ---
 
@@ -224,12 +228,13 @@ Ollama qwen3:8b → streaming response → user
 
 ### Memory layers
 
-| Layer | Table | What's stored |
-|-------|-------|---------------|
-| L1 Episodic | `conversations` | Append-only conversation log |
+| Layer | Table(s) | What's stored |
+|-------|----------|---------------|
+| L1 Episodic | `conversations`, `sessions` | Append-only conversation log |
 | L2 Semantic | `embeddings` + pgvector | 768-dim embeddings, cosine similarity search |
-| L3 Graph | `entities` + `relationships` + `atomic_facts` | Knowledge graph with versioned fact history |
+| L3 Graph | `entities`, `relationships`, `atomic_facts` | Knowledge graph with versioned fact history and decay |
 | L4 Profile | `profile` | ~500-token natural-language user summary |
+| Identity | `user_profile` | Your name, email, social links — personalises every prompt |
 
 ### Intelligent decay
 
@@ -246,18 +251,43 @@ Every entity, relationship, and atomic fact has a `decay_score` (0–1) that dec
 
 Re-mentioning an entity in conversation refreshes its score toward 1.0. Entities below 0.05 are excluded from prompt injection (still in the DB for explicit recall).
 
+### Proactive notifications
+
+A background worker runs inside the Next.js process (via `src/instrumentation.ts`) and checks every 5 minutes for tasks due within 2 hours. When found, it looks up related entities in the knowledge graph and sends a context-aware Telegram message offering to pull up relevant notes or memory — automatically, without any user action.
+
+---
+
+## Database tables
+
+| Table | Purpose |
+|-------|---------|
+| `conversations` | L1 — append-only message log |
+| `sessions` | L1 — session metadata + summaries |
+| `embeddings` | L2 — pgvector 768-dim chunks |
+| `entities` | L3 — named entities with decay score |
+| `relationships` | L3 — versioned fact edges with decay |
+| `atomic_facts` | L3b — granular single-sentence facts with version chain |
+| `profile` | L4 — AI-generated user summary |
+| `user_profile` | Identity fields (name, email, social links) |
+| `tasks` | Planner — Kanban tasks with due dates |
+| `vault_files` | File vault — metadata for uploaded files |
+| `settings` | KV store — OAuth tokens, Telegram sessions, config |
+| `connectors` | Connector status — isActive, lastSyncAt, syncStatus |
+
 ---
 
 ## Stack
 
 - **Next.js 16** App Router, TypeScript strict
 - **Vercel AI SDK v6** (`ai` + `@ai-sdk/react` + `@ai-sdk/openai`)
-- **Ollama** via OpenAI-compat `/v1` endpoint
+- **Ollama** via OpenAI-compat `/v1` endpoint — qwen3:8b (chat), nomic-embed-text (embeddings)
 - **Neon Postgres** + pgvector — single DB for all memory layers
-- **Drizzle ORM** — all queries parameterized
-- **React Flow** (`@xyflow/react`) — knowledge graph visualisation
-- **Tailwind CSS** + shadcn/ui — Precision Dark Amber theme
+- **Drizzle ORM** — all queries parameterized, drizzle-kit for migrations
+- **React Flow** (`@xyflow/react`) — interactive knowledge graph with time-machine slider
+- **Tailwind CSS v4** + shadcn/ui
 - **Zustand** — global state
+- **googleapis** + **google-auth-library** — Gmail, Calendar, Drive OAuth
+- **Web Speech API** — browser-native push-to-talk voice input
 
 ---
 
@@ -265,18 +295,33 @@ Re-mentioning an entity in conversation refreshes its score toward 1.0. Entities
 
 ```
 src/
-├── app/              # Next.js App Router pages + API routes
-├── agent/            # Ollama client, prompt builder, entity extractor
-├── memory/           # 4-layer memory pipeline
-│   ├── episodic.ts   # L1: conversation log
-│   ├── semantic.ts   # L2: pgvector similarity search
-│   ├── entity.ts     # L3: entity/relationship graph
-│   ├── profile.ts    # L4: user profile summary
-│   ├── decay.ts      # Intelligent decay engine
-│   ├── hot.ts        # In-process TTL cache (hot memory layer)
-│   └── index.ts      # Unified recall() + remember() API
-├── planner/          # Task CRUD + AI daily plan
-├── vault/            # File metadata + organizer
-├── frontend/         # React components
-└── shared/           # Types, constants, Zod schemas
+├── app/                    # Next.js App Router pages + API routes
+│   ├── overview/           # Dashboard home
+│   ├── chat/               # Streaming chat with memory
+│   ├── memory/             # Profile · Entities · Knowledge graph · Search
+│   ├── planner/            # Kanban + AI daily plan
+│   ├── files/              # Local file vault
+│   ├── voice/              # Push-to-talk (Web Speech API)
+│   ├── email/              # AI-powered Gmail interface
+│   ├── drive/              # Google Drive browser
+│   ├── settings/           # Profile · Connections · About
+│   └── api/                # All API routes
+├── agent/                  # Ollama client, prompt builder, entity extractor
+├── memory/                 # 4-layer memory pipeline
+│   ├── episodic.ts         # L1: conversation log
+│   ├── semantic.ts         # L2: pgvector similarity search
+│   ├── entity.ts           # L3: entity/relationship graph
+│   ├── profile.ts          # L4: user profile summary
+│   ├── decay.ts            # Intelligent decay engine
+│   ├── hot.ts              # In-process TTL cache
+│   └── index.ts            # Unified recall() + remember() API
+├── connectors/             # Google OAuth, Google Drive, Telegram
+├── lib/
+│   └── notification-worker.ts  # Proactive Telegram task reminders
+├── planner/                # Task CRUD + AI daily plan
+├── vault/                  # File metadata + organizer
+├── components/             # React components
+└── db/
+    ├── schema.ts           # Single Drizzle schema — all 12 tables
+    └── migrations/         # SQL migration files
 ```
