@@ -25,7 +25,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <PanelLeftIcon className="size-4" strokeWidth={2} />
           </Button>
         </div>
-        <section className="flex-1 overflow-hidden">{children}</section>
+        <section className="flex-1 overflow-y-auto">{children}</section>
       </main>
     </div>
   );
