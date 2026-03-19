@@ -56,6 +56,40 @@ export async function sendMessage(
   }
 }
 
+export async function downloadTelegramFile(fileId: string): Promise<{ buffer: Buffer; fileName: string; mimeType: string } | null> {
+  try {
+    // Step 1: Get file path from Telegram
+    const res = await fetch(`${TG_API()}/getFile?file_id=${fileId}`);
+    const data = (await res.json()) as { ok: boolean; result?: { file_path?: string; file_size?: number } };
+    if (!data.ok || !data.result?.file_path) return null;
+
+    const filePath = data.result.file_path;
+
+    // Step 2: Download file bytes
+    const fileRes = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`);
+    if (!fileRes.ok) return null;
+
+    const arrayBuffer = await fileRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Derive name + mime from path
+    const fileName = filePath.split("/").pop() ?? `telegram_${fileId}`;
+    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+    const mimeMap: Record<string, string> = {
+      jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+      gif: "image/gif", webp: "image/webp", mp4: "video/mp4",
+      pdf: "application/pdf", txt: "text/plain", csv: "text/csv",
+      json: "application/json", zip: "application/zip",
+      mp3: "audio/mpeg", ogg: "audio/ogg", wav: "audio/wav",
+    };
+    const mimeType = mimeMap[ext] ?? "application/octet-stream";
+
+    return { buffer, fileName, mimeType };
+  } catch {
+    return null;
+  }
+}
+
 export async function sendTypingAction(chatId: number): Promise<void> {
   await fetch(`${TG_API()}/sendChatAction`, {
     method: "POST",

@@ -13,6 +13,8 @@ import { createHash } from "crypto";
 import { eq } from "drizzle-orm";
 import { google } from "googleapis";
 import type { gmail_v1 } from "googleapis";
+import path from "path";
+import fs from "fs/promises";
 import { db } from "@/db";
 import { userProfile, tasks } from "@/db/schema";
 import { searchSimilar, embedAndStore } from "@/memory/semantic";
@@ -21,6 +23,8 @@ import { getEntityContext, processExtractedEntities } from "@/memory/entity";
 import { extractEntitiesFromConversation } from "@/agent/extract";
 import { getAuthenticatedClient } from "@/connectors/google-auth";
 import { listDriveFiles, searchDriveFiles, getDriveFileContent } from "@/connectors/google-drive";
+import { ensureVaultDir, indexFile, getVaultPath, updateFileAnalysis } from "@/vault/indexer";
+import { analyzeFile } from "@/vault/analyzer";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -753,6 +757,209 @@ export const driveTools = {
     },
   }),
 };
+
+// ── Gmail attachment helpers ──────────────────────────────────────────────────
+
+interface AttachmentMeta {
+  filename: string;
+  mimeType: string;
+  attachmentId: string;
+  size: number;
+}
+
+function findAttachments(part: gmail_v1.Schema$MessagePart | undefined): AttachmentMeta[] {
+  if (!part) return [];
+  const results: AttachmentMeta[] = [];
+
+  if (part.filename && part.body?.attachmentId) {
+    results.push({
+      filename:     part.filename,
+      mimeType:     part.mimeType ?? "application/octet-stream",
+      attachmentId: part.body.attachmentId,
+      size:         part.body.size ?? 0,
+    });
+  }
+
+  if (part.parts) {
+    for (const child of part.parts) {
+      results.push(...findAttachments(child));
+    }
+  }
+
+  return results;
+}
+
+async function downloadAndVaultAttachment(
+  gmail: gmail_v1.Gmail,
+  messageId: string,
+  att: AttachmentMeta,
+  emailSubject: string
+): Promise<{ fileName: string; category: string; summary: string } | null> {
+  try {
+    const res = await gmail.users.messages.attachments.get({
+      userId:    "me",
+      messageId,
+      id:        att.attachmentId,
+    });
+
+    const rawB64 = res.data.data;
+    if (!rawB64) return null;
+
+    // Gmail uses base64url — convert to standard base64
+    const buffer = Buffer.from(rawB64.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+
+    // Save to vault under YYYY/MM/DD structure
+    await ensureVaultDir();
+    const now = new Date();
+    const subDir = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
+    const fullDir = getVaultPath(subDir);
+    await fs.mkdir(fullDir, { recursive: true });
+
+    const safeName = att.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const uniqueName = `${Date.now()}_${safeName}`;
+    const relativePath = path.join(subDir, uniqueName);
+    const fullPath = getVaultPath(relativePath);
+
+    await fs.writeFile(fullPath, buffer);
+
+    const record = await indexFile({
+      fileName:  att.filename,
+      relativePath,
+      mimeType:  att.mimeType,
+      sizeBytes: buffer.length,
+      source:    "email",
+      tags:      [emailSubject.slice(0, 50)],
+    });
+
+    // Fire-and-forget AI analysis
+    analyzeFile({
+      fileId:       record.id,
+      fileName:     att.filename,
+      mimeType:     att.mimeType,
+      absolutePath: fullPath,
+    })
+      .then((analysis) => updateFileAnalysis(record.id, analysis))
+      .catch(() => {});
+
+    return {
+      fileName: att.filename,
+      category: "pending AI analysis",
+      summary:  `From email: "${emailSubject}"`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── save_email_attachments tool ───────────────────────────────────────────────
+
+const saveEmailAttachmentsSchema = z.object({
+  emailId: z
+    .string()
+    .optional()
+    .describe("Gmail message ID of a specific email to download attachments from"),
+  query: z
+    .string()
+    .optional()
+    .describe(
+      "Gmail search query to find emails with attachments, e.g. 'from:john has:attachment', 'subject:invoice has:attachment'. Automatically appends 'has:attachment' if omitted."
+    ),
+  maxEmails: z
+    .number()
+    .min(1)
+    .max(10)
+    .default(3)
+    .describe("Max number of emails to process when using a search query"),
+});
+
+const vaultAttachmentTool = tool({
+  description: `
+Download and save all attachments from one or more emails into the local Vault.
+The AI will then automatically categorize each file.
+
+Call this when Meet asks to:
+- "Save attachments from that email"
+- "Download all documents from emails from [person]"
+- "Extract files from the invoice emails"
+- "Save everything I sent to [name] to my vault"
+- "Download and store the attachments from subject: [subject]"
+
+Provide either:
+- emailId — for a specific known email
+- query   — Gmail search syntax to find matching emails (e.g. "from:sarah has:attachment")
+If neither is given, default query to "has:attachment" (last 3 emails with any attachment).
+`.trim(),
+  inputSchema: saveEmailAttachmentsSchema,
+  execute: async (args: z.infer<typeof saveEmailAttachmentsSchema>) => {
+    const auth = await getAuthenticatedClient();
+    if (!auth) {
+      return { success: false, error: "Gmail not connected. Connect in Settings → Connections." };
+    }
+
+    try {
+      const gmail = google.gmail({ version: "v1", auth });
+      const messageIds: string[] = [];
+
+      if (args.emailId) {
+        messageIds.push(args.emailId);
+      } else {
+        const q = args.query
+          ? (args.query.includes("has:attachment") ? args.query : `${args.query} has:attachment`)
+          : "has:attachment";
+
+        const listRes = await gmail.users.messages.list({
+          userId:     "me",
+          q,
+          maxResults: args.maxEmails,
+        });
+
+        if (!listRes.data.messages?.length) {
+          return { success: false, message: `No emails found matching: "${q}"` };
+        }
+
+        messageIds.push(...listRes.data.messages.map((m) => m.id!));
+      }
+
+      const saved: Array<{ emailSubject: string; files: string[] }> = [];
+      let totalFiles = 0;
+
+      for (const msgId of messageIds) {
+        const msg = await gmail.users.messages.get({ userId: "me", id: msgId, format: "full" });
+        const subject = getHeader(msg.data.payload?.headers, "Subject") || "(no subject)";
+        const attachments = findAttachments(msg.data.payload ?? undefined);
+
+        if (attachments.length === 0) continue;
+
+        const savedFiles: string[] = [];
+
+        for (const att of attachments) {
+          const result = await downloadAndVaultAttachment(gmail, msgId, att, subject);
+          if (result) {
+            savedFiles.push(att.filename);
+            totalFiles++;
+          }
+        }
+
+        if (savedFiles.length > 0) {
+          saved.push({ emailSubject: subject, files: savedFiles });
+        }
+      }
+
+      if (totalFiles === 0) {
+        return { success: false, message: "No downloadable attachments found in the selected emails." };
+      }
+
+      return {
+        success:    true,
+        totalSaved: totalFiles,
+        emails:     saved,
+        message:    `Saved ${totalFiles} file${totalFiles !== 1 ? "s" : ""} to Vault. AI is now categorizing them in the background.`,
+      };
+    } catch (err) {
+      return { success: false, error: `Gmail error: ${String(err)}` };
+    }
+  },
+});
 
 // ── Full tool set ──────────────────────────────────────────────────────────────
 export const allTools = { ...coreTools, ...emailTools, ...driveTools };

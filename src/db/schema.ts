@@ -193,10 +193,18 @@ export const vaultFiles = pgTable("vault_files", {
   sizeBytes: integer("size_bytes"),
   tags: jsonb("tags").$type<string[]>().default([]),
   summary: text("summary"),
+  // AI-assigned category (Finance, Code, Documents, Images, Notes, Archive, Other)
+  category: varchar("category", { length: 100 }).default("Other"),
+  // Upload source: "web" | "telegram" | "api"
+  source: varchar("source", { length: 50 }).default("web"),
+  // Telegram file_id for de-duplication
+  telegramFileId: varchar("telegram_file_id", { length: 300 }),
   isIndexed: boolean("is_indexed").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("vault_name_idx").on(t.fileName),
+  index("vault_category_idx").on(t.category),
+  index("vault_source_idx").on(t.source),
 ]);
 
 // ── SETTINGS ────────────────────────────────
