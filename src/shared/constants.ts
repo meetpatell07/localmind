@@ -7,7 +7,8 @@ export const CHUNK_SIZE = 512;
 export const CHUNK_OVERLAP = 50;
 export const SIMILARITY_TOP_K = 5;
 
-export const PROFILE_REBUILD_INTERVAL = 50; // interactions
+export const PROFILE_REBUILD_INTERVAL = 50;    // interactions
+export const SELF_REFLECTION_INTERVAL = 20;    // analyze tone/style every N messages
 export const MAX_PROFILE_TOKENS = 500;
 
 export const CHAT_TEMPERATURE = 0.7;

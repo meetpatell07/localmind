@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { profile, entities, relationships, conversations } from "@/db/schema";
+import { profile, entities, relationships, conversations, settings } from "@/db/schema";
 import { eq, desc, and, inArray, gte } from "drizzle-orm";
 import { generateText } from "ai";
 import { extractionModel } from "@/agent/ollama";
@@ -258,6 +258,86 @@ Write the profile now:`;
     hot.delete(HOT_KEY.profileFacts());
   } catch {
     // Non-fatal — profile rebuild never blocks the chat pipeline
+  }
+}
+
+// ── Style note ────────────────────────────────────────────────────────────────
+// Self-reflection result: tone/style preferences inferred from recent messages.
+
+const STYLE_NOTE_KEY = "ai:style_profile";
+
+export async function getStyleNote(): Promise<string | null> {
+  const cached = hot.get<string>(HOT_KEY.styleNote());
+  if (cached !== null) return cached;
+
+  const rows = await db
+    .select({ value: settings.value })
+    .from(settings)
+    .where(eq(settings.key, STYLE_NOTE_KEY))
+    .limit(1);
+
+  if (!rows[0]) return null;
+  const note = rows[0].value as string;
+  hot.set(HOT_KEY.styleNote(), note, HOT_TTL.STYLE_NOTE);
+  return note;
+}
+
+/**
+ * Analyze the last 20 conversation messages to infer the user's communication
+ * style and preferences. Stores the result as a prompt instruction in the
+ * settings table. Called every SELF_REFLECTION_INTERVAL interactions.
+ */
+export async function runSelfReflection(): Promise<void> {
+  const recentMsgs = await db
+    .select({ role: conversations.role, content: conversations.content })
+    .from(conversations)
+    .orderBy(desc(conversations.createdAt))
+    .limit(20);
+
+  // Need at least 10 turns (5 exchanges) to infer style reliably
+  if (recentMsgs.length < 10) return;
+
+  const transcript = recentMsgs
+    .reverse()
+    .map((m) => `${m.role === "user" ? "Meet" : "AI"}: ${m.content.slice(0, 200)}`)
+    .join("\n");
+
+  const prompt = `Analyze the following conversation and write 2-3 sentences describing the user's communication preferences. Write as direct style instructions for an AI assistant.
+
+Focus on: formality level (casual vs professional), expected response length (brief vs detailed), technical depth, and engagement tone.
+
+Example output: "Respond concisely and technically. The user prefers direct answers without preamble. Match their informal, first-name-basis tone."
+
+Conversation:
+${transcript}
+
+Style instructions (2-3 sentences, start directly with the instruction):`;
+
+  try {
+    const { text } = await generateText({
+      model: extractionModel,
+      prompt,
+      temperature: 0.2,
+      abortSignal: AbortSignal.timeout(30_000),
+    });
+
+    const note = text.trim();
+    if (!note || note.length < 20) return;
+
+    await db
+      .insert(settings)
+      .values({ key: STYLE_NOTE_KEY, value: note as unknown })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: note as unknown, updatedAt: new Date() },
+      });
+
+    // Refresh hot cache immediately
+    hot.delete(HOT_KEY.styleNote());
+    hot.set(HOT_KEY.styleNote(), note, HOT_TTL.STYLE_NOTE);
+    console.log("[self-reflection] Style profile updated");
+  } catch {
+    // Non-fatal — never block the pipeline
   }
 }
 

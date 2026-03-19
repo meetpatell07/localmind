@@ -60,6 +60,7 @@ export const HOT_TTL = {
   GRAPH:         3 * 60 * 1_000,  // 3 min  — graph topology changes slowly
   USER_IDENTITY: 10 * 60 * 1_000, // 10 min — only changes when user edits Settings
   RECALL_QUERY:  2 * 60 * 1_000,  // 2 min  — semantic search results (same query → same results)
+  STYLE_NOTE:    30 * 60 * 1_000, // 30 min — self-reflection, updated every 20 interactions
 } as const;
 
 // ── Key helpers ───────────────────────────────────────────────────────────────
@@ -70,4 +71,5 @@ export const HOT_KEY = {
   entity:       (id: string) => `entity:${id}`,
   userIdentity: () => "user:identity",
   recallQuery:  (hash: string) => `recall:${hash}`,
+  styleNote:    () => "ai:style_note",
 } as const;

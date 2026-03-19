@@ -36,6 +36,7 @@ export interface MemoryContext {
   relevantEntities: EntityWithRelationships[];
   recentHistory: RecentTurn[];        // L1 episodic: last N turns across sessions
   sessionSummaries: string[];         // Summaries of recent past sessions
+  styleNote: string | null;           // Self-reflection: tone/style inferred every 20 messages
 }
 
 export interface EntityWithRelationships {

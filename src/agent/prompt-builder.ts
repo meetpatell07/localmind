@@ -103,6 +103,12 @@ export function buildSystemPrompt(ctx: MemoryContext): string {
     parts.push(`\n━━━ WHAT YOU KNOW ABOUT MEET (learned from conversations) ━━━━━━━━━━━━━━━━━━━\n${ctx.profile}`);
   }
 
+  // Self-reflection: style/tone preferences inferred from recent message patterns.
+  // Updated every 20 interactions — adapt your responses to match this profile.
+  if (ctx.styleNote) {
+    parts.push(`\n━━━ COMMUNICATION STYLE (adapt your responses to this) ━━━━━━━━━━━━━━━━━━━━━\n${ctx.styleNote}`);
+  }
+
   // Session summaries (compressed past sessions)
   if (ctx.sessionSummaries.length > 0) {
     parts.push(`\n━━━ PAST SESSION SUMMARIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${ctx.sessionSummaries.join("\n")}`);

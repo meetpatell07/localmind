@@ -101,7 +101,7 @@ export async function POST(req: Request): Promise<Response> {
   if (text === "/memory") {
     // Fire off an AI message that will call get_my_profile + recall_memories
     processMessage(chatId, "What do you know about me? Show my profile and any key memories.").catch(
-      () => {}
+      () => { }
     );
     return new Response("OK", { status: 200 });
   }
@@ -121,7 +121,7 @@ export async function POST(req: Request): Promise<Response> {
     await sendMessage(
       chatId,
       "Something went wrong. Is Ollama running? Try again in a moment."
-    ).catch(() => {});
+    ).catch(() => { });
   });
 
   return new Response("OK", { status: 200 });
@@ -160,12 +160,13 @@ async function processMessage(chatId: number, userText: string): Promise<void> {
     memoryCtx = await recallFast();
   } catch {
     memoryCtx = {
-      userIdentity:     null,
-      profile:          null,
+      userIdentity: null,
+      profile: null,
       relevantMemories: [],
       relevantEntities: [],
-      recentHistory:    [],
+      recentHistory: [],
       sessionSummaries: [],
+      styleNote: null,
     };
   }
 
@@ -174,7 +175,7 @@ async function processMessage(chatId: number, userText: string): Promise<void> {
 
   // Keep typing indicator alive for longer requests (Telegram shows it for ~5s)
   const typingInterval = setInterval(() => {
-    sendTypingAction(chatId).catch(() => {});
+    sendTypingAction(chatId).catch(() => { });
   }, 4_500);
 
   let responseText = "";
