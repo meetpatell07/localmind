@@ -376,6 +376,7 @@ Call this when:
       }
     },
   }),
+
 };
 
 // ── MIME email builder (draft / reply) ────────────────────────────────────────
@@ -872,7 +873,7 @@ const saveEmailAttachmentsSchema = z.object({
     .describe("Max number of emails to process when using a search query"),
 });
 
-const vaultAttachmentTool = tool({
+export const vaultAttachmentTool = tool({
   description: `
 Download and save all attachments from one or more emails into the local Vault.
 The AI will then automatically categorize each file.
@@ -962,4 +963,9 @@ If neither is given, default query to "has:attachment" (last 3 emails with any a
 });
 
 // ── Full tool set ──────────────────────────────────────────────────────────────
-export const allTools = { ...coreTools, ...emailTools, ...driveTools };
+export const allTools = {
+  ...coreTools,
+  ...emailTools,
+  ...driveTools,
+  save_email_attachments: vaultAttachmentTool,
+};
