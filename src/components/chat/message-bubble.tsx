@@ -25,15 +25,16 @@ interface ToolInvocationPart {
 }
 
 const TOOL_META: Record<string, { icon: React.ElementType; verb: string }> = {
-  update_profile:        { icon: UserIcon,         verb: "Updating profile"        },
-  save_memory:           { icon: Brain02Icon,      verb: "Saving to memory"        },
-  recall_memories:       { icon: Search01Icon,     verb: "Searching memory"        },
-  query_knowledge_graph: { icon: GitBranchIcon,    verb: "Querying knowledge graph" },
-  create_task:           { icon: CheckListIcon,    verb: "Creating task"           },
-  get_my_profile:        { icon: Database01Icon,   verb: "Reading profile"         },
-  list_emails:           { icon: Database01Icon,   verb: "Fetching inbox"          },
-  search_emails:         { icon: Search01Icon,     verb: "Searching emails"        },
-  get_email:             { icon: Database01Icon,   verb: "Reading email"           },
+  update_profile:          { icon: UserIcon,         verb: "Updating profile"         },
+  save_memory:             { icon: Brain02Icon,      verb: "Saving to memory"         },
+  recall_memories:         { icon: Search01Icon,     verb: "Searching memory"         },
+  query_knowledge_graph:   { icon: GitBranchIcon,    verb: "Querying knowledge graph" },
+  create_task:             { icon: CheckListIcon,    verb: "Creating task"            },
+  get_my_profile:          { icon: Database01Icon,   verb: "Reading profile"          },
+  list_emails:             { icon: Database01Icon,   verb: "Fetching inbox"           },
+  search_emails:           { icon: Search01Icon,     verb: "Searching emails"         },
+  get_email:               { icon: Database01Icon,   verb: "Reading email"            },
+  save_email_attachments:  { icon: Database01Icon,   verb: "Downloading attachments"  },
 };
 
 function toolResultSummary(name: string, result: unknown): string {
@@ -73,6 +74,10 @@ function toolResultSummary(name: string, result: unknown): string {
         : `${(r.emails as unknown[])?.length ?? 0} results`;
     case "get_email":
       return r.error ? `error: ${String(r.error)}` : "email loaded";
+    case "save_email_attachments":
+      return r.success
+        ? `${String(r.totalSaved ?? 0)} file${(r.totalSaved as number) !== 1 ? "s" : ""} saved to vault`
+        : `error: ${String(r.error ?? r.message ?? "unknown")}`;
     default:
       return "done";
   }

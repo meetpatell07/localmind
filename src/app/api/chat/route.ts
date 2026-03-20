@@ -3,7 +3,7 @@ import type { UIMessage } from "ai";
 import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recallFast, remember, createSession } from "@/memory";
-import { coreTools, driveTools } from "@/agent/tools";
+import { coreTools, driveTools, vaultAttachmentTool } from "@/agent/tools";
 import { recordTTFT } from "@/lib/model-advisor";
 import { z } from "zod";
 
@@ -87,7 +87,7 @@ export async function POST(req: Request): Promise<Response> {
         model: chatModel,
         system: systemPrompt,
         messages: modelMessages,
-        tools: { ...coreTools, ...driveTools },
+        tools: { ...coreTools, ...driveTools, save_email_attachments: vaultAttachmentTool },
         stopWhen: stepCountIs(5),
         temperature: 0.7,
         onChunk: () => {
