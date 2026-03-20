@@ -16,6 +16,7 @@ import {
   ArrowLeft01Icon,
   SparklesIcon,
   InboxIcon,
+  MessageAdd01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -374,9 +375,15 @@ function ChatPanel({
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentRef = useRef(false);
+  // Generate a stable session UUID for this component instance.
+  // When the parent remounts ChatPanel (via key change), a fresh UUID is created.
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/email/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/email/chat",
+      body: () => ({ sessionId: sessionIdRef.current }),
+    }),
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
@@ -684,9 +691,16 @@ export default function EmailPage() {
   const [selectedEmail, setSelectedEmail] = useState<EmailSummary | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"inbox" | "chat">("inbox");
+  const [chatKey, setChatKey] = useState(0);
 
   function handleSelectEmail(email: EmailSummary) {
     setSelectedEmail(email);
+    setMobileView("chat");
+  }
+
+  function handleNewSession() {
+    setSelectedEmail(null);
+    setChatKey((k) => k + 1);
     setMobileView("chat");
   }
 
@@ -701,6 +715,15 @@ export default function EmailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* New Session button */}
+          <button
+            onClick={handleNewSession}
+            title="Start a new email chat session"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors"
+          >
+            <MessageAdd01Icon className="size-3.5" />
+            <span className="hidden sm:inline">New session</span>
+          </button>
           {/* Mobile view toggle */}
           <div className="md:hidden flex items-center bg-gray-100 rounded-lg p-0.5">
             <button
@@ -759,6 +782,7 @@ export default function EmailPage() {
           )}
         >
           <ChatPanel
+            key={chatKey}
             pendingMessage={pendingMessage}
             onPendingConsumed={() => setPendingMessage(null)}
             selectedEmail={selectedEmail}
