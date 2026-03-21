@@ -1,11 +1,20 @@
 import type { MemoryContext, UserIdentity } from "@/shared/types";
 
-// ── Base system prompt ─────────────────────────────────────────────────────────
+// ── Base identity + hard rules (ALWAYS first — never pushed down by memory) ──
 
-const BASE_SYSTEM = `\
+const IDENTITY_AND_RULES = `\
 You are LocalMind — Meet's personal AI assistant. You run locally and have full
 persistent memory. You know Meet's profile, remember past conversations, and can
 take real actions on their behalf.
+
+━━━ HARD RULES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✗  Never say "I don't have that information" — call get_my_profile or recall_memories.
+  ✗  Never say "I'll remember that" — actually call save_memory or update_profile.
+  ✗  Never say "I can't update that" — call update_profile.
+  ✗  Never say "I don't have access to email attachments" — call save_email_attachments.
+  ✓  After a tool succeeds, confirm what you did in plain language.
+  ✓  Be concise and personal — you know Meet well.
 
 ━━━ YOUR TOOLS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -78,16 +87,7 @@ Use these tools proactively — don't wait to be asked explicitly.
     "Downloading the attachments from that email…"   → save_email_attachments
     "Let me search your Drive for that…"             → search_drive_files
 
-  Keep narrations to one sentence. Never narrate AFTER the tool.
-
-━━━ HARD RULES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ✗  Never say "I don't have that information" — call get_my_profile or recall_memories.
-  ✗  Never say "I'll remember that" — actually call save_memory or update_profile.
-  ✗  Never say "I can't update that" — call update_profile.
-  ✗  Never say "I don't have access to email attachments" — call save_email_attachments.
-  ✓  After a tool succeeds, confirm what you did in plain language.
-  ✓  Be concise and personal — you know Meet well.`;
+  Keep narrations to one sentence. Never narrate AFTER the tool.`;
 
 // ── Identity block (pre-loaded from DB / hot cache) ───────────────────────────
 
@@ -105,13 +105,51 @@ function buildIdentityBlock(identity: UserIdentity): string {
   return lines.join("\n");
 }
 
+// ── Context deduplication ─────────────────────────────────────────────────────
+// If an entity name already appears verbatim in recent history, strip it from
+// relevantEntities to avoid wasting prompt tokens on redundant context.
+
+function deduplicateEntities(ctx: MemoryContext): MemoryContext {
+  if (ctx.relevantEntities.length === 0 || ctx.recentHistory.length === 0) {
+    return ctx;
+  }
+
+  // Build a single string from recent history for fast substring matching
+  const historyText = ctx.recentHistory
+    .map((t) => t.content)
+    .join(" ")
+    .toLowerCase();
+
+  const filtered = ctx.relevantEntities.filter(
+    (e) => !historyText.includes(e.name.toLowerCase())
+  );
+
+  return { ...ctx, relevantEntities: filtered };
+}
+
 // ── Main builder ──────────────────────────────────────────────────────────────
+// Prompt section order (highest priority → lowest):
+//   1. IDENTITY + HARD RULES + TOOLS  (always first, always seen)
+//   2. COMMUNICATION STYLE
+//   3. USER PROFILE (ground-truth identity fields)
+//   4. AI PROFILE (L4 — learned from conversations)
+//   5. ENTITIES (L3 — compressed, top-N by decay score)
+//   6. RECENT HISTORY (L1 — last 10 turns max)
+//   7. SEMANTIC CONTEXT (L2 — only if retrieved)
+//   8. SESSION SUMMARIES (compressed past sessions)
 
-export function buildSystemPrompt(ctx: MemoryContext): string {
-  const parts: string[] = [BASE_SYSTEM];
+export function buildSystemPrompt(rawCtx: MemoryContext): string {
+  // Deduplicate before serializing
+  const ctx = deduplicateEntities(rawCtx);
 
-  // Identity — explicitly entered by Meet in Settings → Profile.
-  // Injected as ground truth; the AI should never contradict this.
+  const parts: string[] = [IDENTITY_AND_RULES];
+
+  // 2. Communication style (adapt tone)
+  if (ctx.styleNote) {
+    parts.push(`\n━━━ COMMUNICATION STYLE (adapt your responses to this) ━━━━━━━━━━━━━━━━━━━━━\n${ctx.styleNote}`);
+  }
+
+  // 3. User profile — explicitly entered by Meet in Settings → Profile.
   if (ctx.userIdentity) {
     const block = buildIdentityBlock(ctx.userIdentity);
     if (block) {
@@ -119,23 +157,23 @@ export function buildSystemPrompt(ctx: MemoryContext): string {
     }
   }
 
-  // L4 Profile — AI-generated summary rebuilt from conversations.
+  // 4. L4 Profile — AI-generated summary rebuilt from conversations.
   if (ctx.profile) {
     parts.push(`\n━━━ WHAT YOU KNOW ABOUT MEET (learned from conversations) ━━━━━━━━━━━━━━━━━━━\n${ctx.profile}`);
   }
 
-  // Self-reflection: style/tone preferences inferred from recent message patterns.
-  // Updated every 20 interactions — adapt your responses to match this profile.
-  if (ctx.styleNote) {
-    parts.push(`\n━━━ COMMUNICATION STYLE (adapt your responses to this) ━━━━━━━━━━━━━━━━━━━━━\n${ctx.styleNote}`);
+  // 5. L3 Entities (already deduplicated against recent history)
+  if (ctx.relevantEntities.length > 0) {
+    const entityLines = ctx.relevantEntities.map((e) => {
+      const rels = e.relationships
+        .map((r) => `  - ${r.predicate}: ${r.objectValue}`)
+        .join("\n");
+      return `- ${e.name} (${e.type})${rels ? "\n" + rels : ""}`;
+    });
+    parts.push(`\n━━━ KNOWN PEOPLE, PROJECTS & ENTITIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${entityLines.join("\n")}`);
   }
 
-  // Session summaries (compressed past sessions)
-  if (ctx.sessionSummaries.length > 0) {
-    parts.push(`\n━━━ PAST SESSION SUMMARIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${ctx.sessionSummaries.join("\n")}`);
-  }
-
-  // L1 Recent history — verbatim turns across sessions
+  // 6. L1 Recent history — verbatim turns across sessions
   if (ctx.recentHistory.length > 0) {
     const bySession = new Map<string, typeof ctx.recentHistory>();
     for (const turn of ctx.recentHistory) {
@@ -143,13 +181,13 @@ export function buildSystemPrompt(ctx: MemoryContext): string {
       turns.push(turn);
       bySession.set(turn.sessionId, turns);
     }
-    const sessions = [...bySession.entries()];
+    const sessionEntries = [...bySession.entries()];
     const lines: string[] = [];
-    sessions.forEach(([, turns], idx) => {
+    sessionEntries.forEach(([, turns], idx) => {
       const date = new Date(turns[0].createdAt).toLocaleDateString("en", {
         weekday: "short", month: "short", day: "numeric",
       });
-      const label = idx === sessions.length - 1
+      const label = idx === sessionEntries.length - 1
         ? `Current session (${date})`
         : `Session ${idx + 1} (${date})`;
       lines.push(`### ${label}`);
@@ -161,21 +199,15 @@ export function buildSystemPrompt(ctx: MemoryContext): string {
     parts.push(`\n━━━ RECENT CONVERSATION HISTORY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${lines.join("\n")}`);
   }
 
-  // L2 Semantic memories (pre-loaded for context queries)
+  // 7. L2 Semantic memories (pre-loaded for context queries)
   if (ctx.relevantMemories.length > 0) {
     const deduped = [...new Set(ctx.relevantMemories)];
     parts.push(`\n━━━ RELEVANT PAST CONTEXT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${deduped.map((m) => `- ${m.slice(0, 300)}`).join("\n")}`);
   }
 
-  // L3 Entities
-  if (ctx.relevantEntities.length > 0) {
-    const entityLines = ctx.relevantEntities.map((e) => {
-      const rels = e.relationships
-        .map((r) => `  - ${r.predicate}: ${r.objectValue}`)
-        .join("\n");
-      return `- ${e.name} (${e.type})${rels ? "\n" + rels : ""}`;
-    });
-    parts.push(`\n━━━ KNOWN PEOPLE, PROJECTS & ENTITIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${entityLines.join("\n")}`);
+  // 8. Session summaries (compressed past sessions)
+  if (ctx.sessionSummaries.length > 0) {
+    parts.push(`\n━━━ PAST SESSION SUMMARIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${ctx.sessionSummaries.join("\n")}`);
   }
 
   return parts.join("\n");

@@ -23,7 +23,7 @@ import { getEntityContext, processExtractedEntities } from "@/memory/entity";
 import { extractEntitiesFromConversation } from "@/agent/extract";
 import { getAuthenticatedClient } from "@/connectors/google-auth";
 import { listDriveFiles, searchDriveFiles, getDriveFileContent } from "@/connectors/google-drive";
-import { ensureVaultDir, indexFile, getVaultPath, updateFileAnalysis } from "@/vault/indexer";
+import { ensureVaultDir, indexFile, getVaultPath, updateFileAnalysis, emailAttachmentExists, emailFileNameExists } from "@/vault/indexer";
 import { analyzeFile } from "@/vault/analyzer";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -407,7 +407,7 @@ export const emailTools = {
     description:
       "List recent emails from Gmail inbox. Use when the user asks to see their emails, check their inbox, or find recent messages.",
     inputSchema: z.object({
-      maxResults: z.number().min(1).max(20).default(10).describe("Number of emails to fetch"),
+      maxResults: z.coerce.number().min(1).max(20).default(10).describe("Number of emails to fetch"),
       labelIds: z.array(z.string()).default(["INBOX"]).describe("Gmail label IDs — default INBOX. Use UNREAD for unread-only."),
     }),
     execute: async (args: { maxResults: number; labelIds: string[] }) => {
@@ -447,7 +447,7 @@ export const emailTools = {
       "Search Gmail for emails matching a query. Supports Gmail search syntax: from:, to:, subject:, after:, before:, is:unread, has:attachment, etc.",
     inputSchema: z.object({
       query:      z.string().describe("Gmail search query, e.g. 'from:sarah deadline' or 'subject:invoice is:unread'"),
-      maxResults: z.number().min(1).max(20).default(10),
+      maxResults: z.coerce.number().min(1).max(20).default(10),
     }),
     execute: async (args: { query: string; maxResults: number }) => {
       const auth = await getAuthenticatedClient();
@@ -525,7 +525,7 @@ Call this when:
 Returns a list of events for the next N days and derived free windows (9am–6pm).
 `.trim(),
     inputSchema: z.object({
-      days:     z.number().min(1).max(14).default(7).describe("How many days ahead to check (default 7)"),
+      days:     z.coerce.number().min(1).max(14).default(7).describe("How many days ahead to check (default 7)"),
       timezone: z.string().default("UTC").describe("IANA timezone for display (e.g. 'America/New_York')"),
     }),
     execute: async (args: { days: number; timezone: string }) => {
@@ -698,7 +698,7 @@ export const driveTools = {
     description:
       "List files from Google Drive. Use when the user asks to see their Drive files, find recent documents, or browse their Drive.",
     inputSchema: z.object({
-      maxResults: z.number().min(1).max(20).default(10),
+      maxResults: z.coerce.number().min(1).max(20).default(10),
       mimeType:   z.string().optional().describe("Filter by MIME type, e.g. 'application/vnd.google-apps.document' for Google Docs"),
       starred:    z.boolean().optional().describe("Only show starred files"),
       query:      z.string().optional().describe("Search query for file names or content"),
@@ -728,7 +728,7 @@ export const driveTools = {
       "Search Google Drive files by content or name. Use Gmail-style queries or plain text.",
     inputSchema: z.object({
       query:      z.string().min(2).describe("Search query — searches file names and content"),
-      maxResults: z.number().min(1).max(20).default(10),
+      maxResults: z.coerce.number().min(1).max(20).default(10),
     }),
     execute: async (args: { query: string; maxResults: number }) => {
       try {
@@ -809,6 +809,10 @@ async function downloadAndVaultAttachment(
     // Gmail uses base64url — convert to standard base64
     const buffer = Buffer.from(rawB64.replace(/-/g, "+").replace(/_/g, "/"), "base64");
 
+    // Dedup: skip if same file (name + size) already saved from email
+    const alreadyExists = await emailAttachmentExists(att.filename, buffer.length);
+    if (alreadyExists) return null;
+
     // Save to vault under YYYY/MM/DD structure
     await ensureVaultDir();
     const now = new Date();
@@ -866,7 +870,7 @@ const saveEmailAttachmentsSchema = z.object({
       "Gmail search query to find emails with attachments, e.g. 'from:john has:attachment', 'subject:invoice has:attachment'. Automatically appends 'has:attachment' if omitted."
     ),
   maxEmails: z
-    .number()
+    .coerce.number()
     .min(1)
     .max(10)
     .default(3)
@@ -923,6 +927,7 @@ If neither is given, default query to "has:attachment" (last 3 emails with any a
 
       const saved: Array<{ emailSubject: string; files: string[] }> = [];
       let totalFiles = 0;
+      let skippedDuplicates = 0;
 
       for (const msgId of messageIds) {
         const msg = await gmail.users.messages.get({ userId: "me", id: msgId, format: "full" });
@@ -938,6 +943,10 @@ If neither is given, default query to "has:attachment" (last 3 emails with any a
           if (result) {
             savedFiles.push(att.filename);
             totalFiles++;
+          } else {
+            // null means either download error or duplicate — check which
+            const isDup = await emailFileNameExists(att.filename);
+            if (isDup) skippedDuplicates++;
           }
         }
 
@@ -946,15 +955,29 @@ If neither is given, default query to "has:attachment" (last 3 emails with any a
         }
       }
 
-      if (totalFiles === 0) {
+      if (totalFiles === 0 && skippedDuplicates === 0) {
         return { success: false, message: "No downloadable attachments found in the selected emails." };
       }
+
+      if (totalFiles === 0 && skippedDuplicates > 0) {
+        return {
+          success: true,
+          totalSaved: 0,
+          skippedDuplicates,
+          message: `All ${skippedDuplicates} attachment${skippedDuplicates !== 1 ? "s" : ""} already exist in the Vault — no duplicates saved.`,
+        };
+      }
+
+      const dupNote = skippedDuplicates > 0
+        ? ` (${skippedDuplicates} duplicate${skippedDuplicates !== 1 ? "s" : ""} skipped)`
+        : "";
 
       return {
         success:    true,
         totalSaved: totalFiles,
+        skippedDuplicates,
         emails:     saved,
-        message:    `Saved ${totalFiles} file${totalFiles !== 1 ? "s" : ""} to Vault. AI is now categorizing them in the background.`,
+        message:    `Saved ${totalFiles} file${totalFiles !== 1 ? "s" : ""} to Vault${dupNote}. AI is now categorizing them in the background.`,
       };
     } catch (err) {
       return { success: false, error: `Gmail error: ${String(err)}` };

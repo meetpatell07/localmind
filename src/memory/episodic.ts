@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { conversations, sessions } from "@/db/schema";
-import { eq, desc, isNotNull, count } from "drizzle-orm";
+import { eq, desc, isNotNull, isNull, count, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface SessionListItem {
@@ -170,4 +170,48 @@ Summary:`;
   } catch {
     return null;
   }
+}
+
+/**
+ * Find sessions that have been inactive for 30+ minutes, have at least 2 turns,
+ * and haven't been summarized yet — then summarize each one.
+ *
+ * Called periodically by the notification worker (every 5 min).
+ */
+export async function summarizeStaleSessions(): Promise<number> {
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+  // Find sessions with no summary where the latest message is older than 30 min
+  const staleSessions = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(
+      and(
+        isNull(sessions.summary),
+        sql`${sessions.turnCount} >= 2`,
+        // Session started more than 30 min ago (cheap pre-filter)
+        sql`${sessions.startedAt} < ${thirtyMinAgo}`,
+      ),
+    )
+    .limit(5); // batch at most 5 per cycle to avoid blocking
+
+  let summarized = 0;
+
+  for (const session of staleSessions) {
+    // Double-check: find the most recent message in this session
+    const lastMsg = await db
+      .select({ createdAt: conversations.createdAt })
+      .from(conversations)
+      .where(eq(conversations.sessionId, session.id))
+      .orderBy(desc(conversations.createdAt))
+      .limit(1);
+
+    // Skip if still active (last message within 30 min)
+    if (lastMsg[0] && lastMsg[0].createdAt > thirtyMinAgo) continue;
+
+    const result = await summarizeSession(session.id);
+    if (result) summarized++;
+  }
+
+  return summarized;
 }

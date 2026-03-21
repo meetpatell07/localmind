@@ -233,3 +233,30 @@ export const connectors = pgTable("connectors", {
 }, (t) => [
   index("connector_provider_idx").on(t.provider),
 ]);
+
+// ── MEETINGS ─────────────────────────────────
+// Stores recorded/transcribed meeting data with AI-extracted action items.
+
+export const meetings = pgTable("meetings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: varchar("title", { length: 500 }).notNull().default("Untitled Meeting"),
+  participants: jsonb("participants").$type<string[]>().default([]),
+  transcript: text("transcript").notNull().default(""),
+  summary: text("summary"),
+  actionItems: jsonb("action_items").$type<Array<{
+    task: string;
+    assignee?: string;
+    dueDate?: string;
+    priority: string;
+  }>>().default([]),
+  decisions: jsonb("decisions").$type<string[]>().default([]),
+  topics: jsonb("topics").$type<string[]>().default([]),
+  tasksCreated: integer("tasks_created").default(0),
+  durationSeconds: integer("duration_seconds"),
+  source: varchar("source", { length: 50 }).default("recorded"), // "recorded" | "pasted"
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("meetings_created_idx").on(t.createdAt),
+]);

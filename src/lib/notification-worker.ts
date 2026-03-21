@@ -13,6 +13,7 @@ import { db } from "@/db";
 import { tasks, entities, relationships, settings } from "@/db/schema";
 import { and, eq, gte, lte, or, ilike, inArray, sql } from "drizzle-orm";
 import { sendMessage } from "@/connectors/telegram";
+import { summarizeStaleSessions } from "@/memory/episodic";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -250,10 +251,16 @@ export function startNotificationWorker(): void {
   // Initial check after 30 s (let the server fully boot first)
   setTimeout(() => {
     checkAndNotifyDueTasks().catch(() => {});
+    summarizeStaleSessions()
+      .then((n) => { if (n > 0) console.log(`[session-summarizer] Auto-summarized ${n} stale session(s)`); })
+      .catch(() => {});
   }, 30_000);
 
   // Recurring check every 5 minutes
   setInterval(() => {
     checkAndNotifyDueTasks().catch(() => {});
+    summarizeStaleSessions()
+      .then((n) => { if (n > 0) console.log(`[session-summarizer] Auto-summarized ${n} stale session(s)`); })
+      .catch(() => {});
   }, 5 * 60 * 1000);
 }
