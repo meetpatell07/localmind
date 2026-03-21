@@ -4,7 +4,7 @@ import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recallFast, remember, createSession } from "@/memory";
 import { coreTools, driveTools, vaultAttachmentTool } from "@/agent/tools";
-import { getNotionTools } from "@/connectors/notion-mcp";
+import { getNotionTools, shouldUseNotionTools } from "@/connectors/notion-mcp";
 import { recordTTFT } from "@/lib/model-advisor";
 import { z } from "zod";
 
@@ -82,8 +82,8 @@ export async function POST(req: Request): Promise<Response> {
   const requestStart = Date.now();
   let firstTokenRecorded = false;
 
-  // Load Notion MCP tools (empty object if not connected)
-  const notionTools = await getNotionTools();
+  // Only load Notion MCP tools when the user explicitly mentions Notion
+  const notionTools = shouldUseNotionTools(userText) ? await getNotionTools() : {};
 
   const stream = createUIMessageStream({
     execute: ({ writer }) => {

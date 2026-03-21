@@ -15,7 +15,7 @@ import path from "path";
 import fs from "fs/promises";
 import { chatModel } from "@/agent/ollama";
 import { allTools } from "@/agent/tools";
-import { getNotionTools } from "@/connectors/notion-mcp";
+import { getNotionTools, shouldUseNotionTools } from "@/connectors/notion-mcp";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recallFast, remember, createSession } from "@/memory";
 import { db } from "@/db";
@@ -422,8 +422,8 @@ async function processMessage(chatId: number, userText: string): Promise<void> {
   const systemPrompt = buildSystemPrompt(memoryCtx);
   const modelMessages = await convertToModelMessages(allMessages);
 
-  // Load Notion MCP tools (empty object if not connected)
-  const notionTools = await getNotionTools();
+  // Only load Notion MCP tools when the user explicitly mentions Notion
+  const notionTools = shouldUseNotionTools(userText) ? await getNotionTools() : {};
 
   const typingInterval = setInterval(() => {
     sendTypingAction(chatId).catch(() => {});
