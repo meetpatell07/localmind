@@ -18,6 +18,7 @@ import {
   Loading03Icon,
   AiBrain02Icon,
   ArrowLeft01Icon,
+  Delete02Icon,
 } from "hugeicons-react";
 import { cn } from "@/lib/utils";
 
@@ -71,13 +72,13 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function FileRow({ f }: { f: VaultFile }) {
+function FileRow({ f, onDelete }: { f: VaultFile; onDelete?: (id: string) => void }) {
   const config = getFileConfig(f.mimeType);
   const Icon = config.icon;
   return (
     <div
       className="grid items-center px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group cursor-default"
-      style={{ gridTemplateColumns: "1fr 80px 90px" }}
+      style={{ gridTemplateColumns: "1fr 80px 90px 32px" }}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", config.bg)}>
@@ -107,6 +108,13 @@ function FileRow({ f }: { f: VaultFile }) {
       <span className="text-xs text-gray-400 text-right">
         {new Date(f.createdAt).toLocaleDateString("en", { month: "short", day: "numeric" })}
       </span>
+      <button
+        onClick={() => onDelete?.(f.id)}
+        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+        title="Delete file"
+      >
+        <Delete02Icon className="size-3.5" />
+      </button>
     </div>
   );
 }
@@ -156,19 +164,20 @@ function FolderCard({
   );
 }
 
-function FileTable({ files }: { files: VaultFile[] }) {
+function FileTable({ files, onDelete }: { files: VaultFile[]; onDelete?: (id: string) => void }) {
   return (
     <>
       <div
         className="grid px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
-        style={{ gridTemplateColumns: "1fr 80px 90px" }}
+        style={{ gridTemplateColumns: "1fr 80px 90px 32px" }}
       >
         <span>Name</span>
         <span className="text-right">Size</span>
         <span className="text-right">Added</span>
+        <span />
       </div>
       <div className="space-y-0.5">
-        {files.map((f) => <FileRow key={f.id} f={f} />)}
+        {files.map((f) => <FileRow key={f.id} f={f} onDelete={onDelete} />)}
       </div>
     </>
   );
@@ -254,6 +263,26 @@ export default function FilesPage() {
     setIsDragOver(false);
     const f = e.dataTransfer.files[0];
     if (f) uploadFile(f);
+  }
+
+  async function handleDelete(fileId: string) {
+    if (!confirm("Delete this file permanently?")) return;
+    try {
+      const res = await fetch(`/api/files?id=${fileId}`, { method: "DELETE" });
+      if (!res.ok) return;
+      // Remove from local state immediately
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+      setGrouped((prev) => {
+        const next: Record<string, VaultFile[]> = {};
+        for (const [cat, catFiles] of Object.entries(prev)) {
+          const filtered = catFiles.filter((f) => f.id !== fileId);
+          if (filtered.length > 0) next[cat] = filtered;
+        }
+        return next;
+      });
+    } catch {
+      // ignore
+    }
   }
 
   const totalSize = files.reduce((sum, f) => sum + (f.sizeBytes ?? 0), 0);
@@ -388,7 +417,7 @@ export default function FilesPage() {
             {folderFiles.length === 0 ? (
               <EmptyVault onUpload={() => fileInputRef.current?.click()} />
             ) : (
-              <FileTable files={folderFiles} />
+              <FileTable files={folderFiles} onDelete={handleDelete} />
             )}
           </div>
         )}
@@ -399,7 +428,7 @@ export default function FilesPage() {
             {files.length === 0 && !loading ? (
               <EmptyVault onUpload={() => fileInputRef.current?.click()} />
             ) : (
-              <FileTable files={files} />
+              <FileTable files={files} onDelete={handleDelete} />
             )}
           </div>
         )}

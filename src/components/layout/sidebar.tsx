@@ -15,6 +15,7 @@ import {
   FolderOpenIcon,
   PlusSignIcon,
   GoogleDriveIcon,
+  CameraVideoIcon,
 } from "hugeicons-react";
 import { OllamaStatus } from "@/components/layout/ollama-status";
 
@@ -27,6 +28,7 @@ const sidebarItems = [
   { label: "Voice", path: "/voice", icon: Mic01Icon },
   { label: "Email", path: "/email", icon: Mail01Icon },
   { label: "Drive", path: "/drive", icon: GoogleDriveIcon },
+  { label: "Meetings", path: "/meetings", icon: CameraVideoIcon },
 ];
 
 const contextItems = [

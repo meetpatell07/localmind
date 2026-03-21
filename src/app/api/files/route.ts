@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import path from "path";
 import fs from "fs/promises";
-import { ensureVaultDir, indexFile, listFiles, getVaultPath, getFilesByCategory, updateFileAnalysis } from "@/vault/indexer";
+import { ensureVaultDir, indexFile, listFiles, getVaultPath, getFilesByCategory, updateFileAnalysis, deleteFile } from "@/vault/indexer";
 import { analyzeFile } from "@/vault/analyzer";
 
 export async function GET(req: NextRequest) {
@@ -61,4 +61,18 @@ export async function POST(req: NextRequest) {
     .catch(() => {});
 
   return Response.json({ file: record }, { status: 201 });
+}
+
+export async function DELETE(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) {
+    return Response.json({ error: "Missing file id" }, { status: 400 });
+  }
+
+  const deleted = await deleteFile(id);
+  if (!deleted) {
+    return Response.json({ error: "File not found" }, { status: 404 });
+  }
+
+  return Response.json({ success: true });
 }
