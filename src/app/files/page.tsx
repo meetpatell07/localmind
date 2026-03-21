@@ -19,6 +19,7 @@ import {
   AiBrain02Icon,
   ArrowLeft01Icon,
   Delete02Icon,
+  Download01Icon,
 } from "hugeicons-react";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +79,7 @@ function FileRow({ f, onDelete }: { f: VaultFile; onDelete?: (id: string) => voi
   return (
     <div
       className="grid items-center px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors group cursor-default"
-      style={{ gridTemplateColumns: "1fr 80px 90px 32px" }}
+      style={{ gridTemplateColumns: "1fr 80px 90px 64px" }}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", config.bg)}>
@@ -108,13 +109,24 @@ function FileRow({ f, onDelete }: { f: VaultFile; onDelete?: (id: string) => voi
       <span className="text-xs text-gray-400 text-right">
         {new Date(f.createdAt).toLocaleDateString("en", { month: "short", day: "numeric" })}
       </span>
-      <button
-        onClick={() => onDelete?.(f.id)}
-        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
-        title="Delete file"
-      >
-        <Delete02Icon className="size-3.5" />
-      </button>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+        <a
+          href={`/api/files/download?id=${f.id}`}
+          download
+          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-all"
+          title="Download file"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Download01Icon className="size-3.5" />
+        </a>
+        <button
+          onClick={() => onDelete?.(f.id)}
+          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+          title="Delete file"
+        >
+          <Delete02Icon className="size-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -169,7 +181,7 @@ function FileTable({ files, onDelete }: { files: VaultFile[]; onDelete?: (id: st
     <>
       <div
         className="grid px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
-        style={{ gridTemplateColumns: "1fr 80px 90px 32px" }}
+        style={{ gridTemplateColumns: "1fr 80px 90px 64px" }}
       >
         <span>Name</span>
         <span className="text-right">Size</span>

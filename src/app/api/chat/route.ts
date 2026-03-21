@@ -4,6 +4,7 @@ import { chatModel } from "@/agent/ollama";
 import { buildSystemPrompt } from "@/agent/prompt-builder";
 import { recallFast, remember, createSession } from "@/memory";
 import { coreTools, driveTools, vaultAttachmentTool } from "@/agent/tools";
+import { getNotionTools } from "@/connectors/notion-mcp";
 import { recordTTFT } from "@/lib/model-advisor";
 import { z } from "zod";
 
@@ -81,13 +82,16 @@ export async function POST(req: Request): Promise<Response> {
   const requestStart = Date.now();
   let firstTokenRecorded = false;
 
+  // Load Notion MCP tools (empty object if not connected)
+  const notionTools = await getNotionTools();
+
   const stream = createUIMessageStream({
     execute: ({ writer }) => {
       const result = streamText({
         model: chatModel,
         system: systemPrompt,
         messages: modelMessages,
-        tools: { ...coreTools, ...driveTools, save_email_attachments: vaultAttachmentTool },
+        tools: { ...coreTools, ...driveTools, save_email_attachments: vaultAttachmentTool, ...notionTools },
         stopWhen: stepCountIs(5),
         temperature: 0.7,
         onChunk: () => {

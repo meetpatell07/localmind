@@ -37,7 +37,10 @@ interface ConnectorStatus {
 }
 
 interface ConnectorsPayload {
-  connectors: { google?: ConnectorStatus };
+  connectors: {
+    google?: ConnectorStatus;
+    notion?: ConnectorStatus;
+  };
 }
 
 interface UserProfileData {
@@ -514,18 +517,23 @@ function SetupGuide({ show }: { show: boolean }) {
 
 function ConnectionsSection({
   google,
+  notion,
   loading,
   onRefresh,
   onDisconnect,
   onBanner,
 }: {
   google: ConnectorStatus | null;
+  notion: ConnectorStatus | null;
   loading: boolean;
   onRefresh: () => void;
   onDisconnect: (provider: string) => Promise<void>;
   onBanner: (b: { type: "success" | "error"; message: string }) => void;
 }) {
   const showSetupGuide = !google?.connected && !loading;
+  const [notionToken, setNotionToken] = useState("");
+  const [notionSaving, setNotionSaving] = useState(false);
+  const [showNotionInput, setShowNotionInput] = useState(false);
 
   async function handleGoogleLogout() {
     await onDisconnect("google");
@@ -533,6 +541,35 @@ function ConnectionsSection({
       type: "success",
       message: "Google account disconnected — tokens removed from database",
     });
+  }
+
+  async function handleNotionConnect() {
+    if (!notionToken.trim()) return;
+    setNotionSaving(true);
+    try {
+      const res = await fetch("/api/connectors/notion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: notionToken.trim() }),
+      });
+      if (res.ok) {
+        setNotionToken("");
+        setShowNotionInput(false);
+        onBanner({ type: "success", message: "Notion connected — integration token saved" });
+        onRefresh();
+      } else {
+        onBanner({ type: "error", message: "Failed to save Notion token" });
+      }
+    } catch {
+      onBanner({ type: "error", message: "Failed to connect Notion" });
+    } finally {
+      setNotionSaving(false);
+    }
+  }
+
+  async function handleNotionDisconnect() {
+    await onDisconnect("notion");
+    onBanner({ type: "success", message: "Notion disconnected — token removed" });
   }
 
   return (
@@ -575,10 +612,60 @@ function ConnectionsSection({
           accentBg="bg-gray-50"
           accentText="text-gray-600"
           accentBorder="border-gray-200"
-          status={null}
-          connectHref="/settings"
-          comingSoon
+          status={notion}
+          connectHref="#"
+          onDisconnect={handleNotionDisconnect}
         />
+        {/* Notion token input */}
+        {!notion?.connected && (
+          <div className="ml-1">
+            {showNotionInput ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  type="password"
+                  value={notionToken}
+                  onChange={(e) => setNotionToken(e.target.value)}
+                  placeholder="ntn_... or secret_..."
+                  className="bg-white border-gray-200 text-sm h-8 max-w-xs"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => void handleNotionConnect()}
+                  disabled={notionSaving || !notionToken.trim()}
+                  className="text-xs h-8"
+                >
+                  {notionSaving ? "Saving..." : "Save"}
+                </Button>
+                <button
+                  onClick={() => { setShowNotionInput(false); setNotionToken(""); }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowNotionInput(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-lg border bg-gray-50 border-gray-200 text-gray-600 hover:opacity-90 transition-colors"
+              >
+                <LinkSquare02Icon className="size-3" />
+                Connect with token
+              </button>
+            )}
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              Create an integration at{" "}
+              <a
+                href="https://www.notion.so/my-integrations"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-600"
+              >
+                notion.so/my-integrations
+              </a>
+              {" "}and paste the token here.
+            </p>
+          </div>
+        )}
         <ConnectorCard
           name="Google Calendar"
           description="View and create events (included with Google)"
@@ -729,6 +816,7 @@ function SettingsContent() {
   }
 
   const google = connData?.connectors?.google ?? null;
+  const notion = connData?.connectors?.notion ?? null;
 
   return (
     <div className="flex flex-col h-full overflow-hidden animate-fade-in">
@@ -809,6 +897,7 @@ function SettingsContent() {
           <TabsContent value="connections">
             <ConnectionsSection
               google={google}
+              notion={notion}
               loading={loading}
               onRefresh={() => void load()}
               onDisconnect={handleDisconnect}
