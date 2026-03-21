@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { getGoogleConnectionStatus, disconnectGoogle } from "@/connectors/google-auth";
-import { db } from "@/db";
-import { connectors } from "@/db/schema";
+import { getNotionConnectionStatus, disconnectNotion } from "@/connectors/notion-mcp";
 
 export async function GET(): Promise<Response> {
   try {
-    const google = await getGoogleConnectionStatus();
+    const [google, notion] = await Promise.all([
+      getGoogleConnectionStatus(),
+      getNotionConnectionStatus(),
+    ]);
 
-    // Placeholder statuses for future connectors
-    const notion = { connected: false };
     const calendar = google.connected; // shares Google OAuth
 
     return NextResponse.json({
@@ -34,6 +34,15 @@ export async function DELETE(req: Request): Promise<Response> {
   if (provider === "google") {
     try {
       await disconnectGoogle();
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
+  if (provider === "notion") {
+    try {
+      await disconnectNotion();
       return NextResponse.json({ success: true });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });

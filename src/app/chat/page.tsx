@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
 import { MessageList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/chat-input";
 import { SessionSidebar } from "@/components/chat/session-sidebar";
@@ -15,13 +16,16 @@ function LiveChat({
   ollamaOnline,
   error,
   onCheckOllama,
+  initialMessages,
 }: {
   sessionIdRef: React.RefObject<string | null>;
   ollamaOnline: boolean;
   error: Error | undefined;
   onCheckOllama: () => void;
+  initialMessages?: UIMessage[];
 }) {
   const { messages, sendMessage, status, stop } = useChat({
+    messages: initialMessages,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: () => ({ sessionId: sessionIdRef.current }),
@@ -69,6 +73,7 @@ export default function ChatPage() {
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sessionRefreshTick, setSessionRefreshTick] = useState(0);
+  const [forkedMessages, setForkedMessages] = useState<UIMessage[] | undefined>(undefined);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function checkOllama() {
@@ -109,12 +114,29 @@ export default function ChatPage() {
     const sessionId = await createNewSession();
     if (sessionId) sessionIdRef.current = sessionId;
     setViewingSessionId(null);
+    setForkedMessages(undefined);
     setChatKey((k) => k + 1);
     setSessionRefreshTick((t) => t + 1);
   }, []);
 
   const handleSelectSession = useCallback((id: string | null) => {
     setViewingSessionId(id);
+  }, []);
+
+  const handleFork = useCallback((newSessionId: string, messages: Array<{ role: string; content: string }>) => {
+    // Set the forked session as current
+    sessionIdRef.current = newSessionId;
+    // Convert DB messages to UIMessage format for initialMessages
+    const uiMessages: UIMessage[] = messages.map((m, i) => ({
+      id: `fork-${i}`,
+      role: m.role as "user" | "assistant",
+      content: m.content,
+      parts: [{ type: "text" as const, text: m.content }],
+    }));
+    setForkedMessages(uiMessages);
+    setViewingSessionId(null);
+    setChatKey((k) => k + 1);
+    setSessionRefreshTick((t) => t + 1);
   }, []);
 
   return (
@@ -163,6 +185,7 @@ export default function ChatPage() {
           <SessionTranscript
             sessionId={viewingSessionId}
             onBack={() => setViewingSessionId(null)}
+            onFork={handleFork}
           />
         ) : (
           <LiveChat
@@ -171,6 +194,7 @@ export default function ChatPage() {
             ollamaOnline={ollamaOnline}
             error={undefined}
             onCheckOllama={checkOllama}
+            initialMessages={forkedMessages}
           />
         )}
       </div>

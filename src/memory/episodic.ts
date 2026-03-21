@@ -39,6 +39,59 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 import { generateText } from "ai";
 import { extractionModel } from "@/agent/ollama";
+import { asc } from "drizzle-orm";
+
+/**
+ * Fork a session from a specific message index.
+ * Creates a new session and copies all messages up to (and including) that index.
+ * Returns the new session ID and the copied messages.
+ */
+export async function forkSession(
+  sourceSessionId: string,
+  upToIndex: number
+): Promise<{ sessionId: string; messages: Array<{ role: string; content: string }> }> {
+  // Fetch all messages from the source session in chronological order
+  const allMsgs = await db
+    .select({
+      role: conversations.role,
+      content: conversations.content,
+      channel: conversations.channel,
+      tokenCount: conversations.tokenCount,
+    })
+    .from(conversations)
+    .where(eq(conversations.sessionId, sourceSessionId))
+    .orderBy(asc(conversations.createdAt));
+
+  const messagesToCopy = allMsgs.slice(0, upToIndex + 1);
+  if (messagesToCopy.length === 0) {
+    throw new Error("No messages to fork");
+  }
+
+  // Create the new forked session
+  const newSessionId = randomUUID();
+  await db.insert(sessions).values({
+    id: newSessionId,
+    channel: "chat",
+    turnCount: Math.floor(messagesToCopy.length / 2),
+    summary: `Forked conversation (${messagesToCopy.length} messages)`,
+  });
+
+  // Copy messages into the new session
+  await db.insert(conversations).values(
+    messagesToCopy.map((m) => ({
+      sessionId: newSessionId,
+      role: m.role,
+      content: m.content,
+      channel: m.channel ?? "chat",
+      tokenCount: m.tokenCount,
+    }))
+  );
+
+  return {
+    sessionId: newSessionId,
+    messages: messagesToCopy.map((m) => ({ role: m.role, content: m.content })),
+  };
+}
 
 export async function logMessage(
   sessionId: string,

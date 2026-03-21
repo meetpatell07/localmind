@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Loading03Icon, ArrowLeft01Icon } from "hugeicons-react";
+import { Loading03Icon, ArrowLeft01Icon, GitForkIcon } from "hugeicons-react";
 import { cn } from "@/lib/utils";
 
 interface TranscriptMessage {
@@ -14,11 +14,13 @@ interface TranscriptMessage {
 interface SessionTranscriptProps {
   sessionId: string;
   onBack: () => void;
+  onFork?: (newSessionId: string, messages: TranscriptMessage[]) => void;
 }
 
-export function SessionTranscript({ sessionId, onBack }: SessionTranscriptProps) {
+export function SessionTranscript({ sessionId, onBack, onFork }: SessionTranscriptProps) {
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forkingIndex, setForkingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -28,6 +30,23 @@ export function SessionTranscript({ sessionId, onBack }: SessionTranscriptProps)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  async function handleFork(messageIndex: number) {
+    if (!onFork) return;
+    setForkingIndex(messageIndex);
+    try {
+      const res = await fetch("/api/sessions/fork", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceSessionId: sessionId, upToIndex: messageIndex }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { sessionId: string; messages: TranscriptMessage[] };
+      onFork(data.sessionId, data.messages);
+    } finally {
+      setForkingIndex(null);
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -59,11 +78,12 @@ export function SessionTranscript({ sessionId, onBack }: SessionTranscriptProps)
           <div className="space-y-5 py-6 max-w-3xl mx-auto">
             {messages.map((msg, i) => {
               const isUser = msg.role === "user";
+              const isForking = forkingIndex === i;
               return (
                 <div
                   key={i}
                   className={cn(
-                    "flex gap-3 w-full",
+                    "group/msg relative flex gap-3 w-full",
                     isUser ? "flex-row-reverse" : "flex-row"
                   )}
                 >
@@ -107,6 +127,29 @@ export function SessionTranscript({ sessionId, onBack }: SessionTranscriptProps)
                         </ReactMarkdown>
                       </div>
                     </div>
+                  )}
+
+                  {/* Fork button — appears on hover */}
+                  {onFork && (
+                    <button
+                      onClick={() => handleFork(i)}
+                      disabled={isForking}
+                      className={cn(
+                        "absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full",
+                        "opacity-0 group-hover/msg:opacity-100 transition-all",
+                        "flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium",
+                        "bg-white border border-gray-200 text-gray-400 hover:text-violet-600 hover:border-violet-200 hover:bg-violet-50 shadow-sm",
+                        "disabled:opacity-50"
+                      )}
+                      title="Fork conversation from here"
+                    >
+                      {isForking ? (
+                        <Loading03Icon className="size-3 animate-spin" />
+                      ) : (
+                        <GitForkIcon className="size-3" />
+                      )}
+                      Fork
+                    </button>
                   )}
                 </div>
               );
