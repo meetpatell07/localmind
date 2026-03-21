@@ -127,9 +127,17 @@ async function closeMCPClient(): Promise<void> {
   }
 }
 
+const NOTION_KEYWORDS = /\bnotion\b/i;
+
+/** Check if user text mentions Notion-related concepts. */
+export function shouldUseNotionTools(userText: string): boolean {
+  return NOTION_KEYWORDS.test(userText);
+}
+
 /**
  * Get Notion tools for use in streamText().
  * Returns an empty object if Notion is not connected.
+ * Call shouldUseNotionTools() first to avoid spawning the MCP server unnecessarily.
  */
 export async function getNotionTools(): Promise<Record<string, unknown>> {
   try {
