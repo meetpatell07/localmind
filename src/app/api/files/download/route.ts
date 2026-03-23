@@ -3,7 +3,10 @@ import { db } from "@/db";
 import { vaultFiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getVaultPath } from "@/vault/indexer";
+import path from "path";
 import fs from "fs/promises";
+
+const VAULT_DIR = path.join(process.cwd(), "vault");
 
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
@@ -27,6 +30,12 @@ export async function GET(req: NextRequest) {
 
   const { fileName, filePath, mimeType } = rows[0];
   const fullPath = getVaultPath(filePath);
+
+  // Path traversal protection — ensure resolved path stays inside vault
+  const resolved = path.resolve(fullPath);
+  if (!resolved.startsWith(path.resolve(VAULT_DIR))) {
+    return Response.json({ error: "Invalid file path" }, { status: 403 });
+  }
 
   let buffer: Buffer;
   try {

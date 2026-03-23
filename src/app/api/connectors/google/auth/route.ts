@@ -9,6 +9,14 @@ export async function GET(): Promise<Response> {
     );
   }
 
-  const url = getAuthUrl();
-  return NextResponse.redirect(url);
+  try {
+    const url = getAuthUrl();
+    return NextResponse.redirect(url);
+  } catch (err) {
+    console.error("[google/auth]", err);
+    return NextResponse.json(
+      { error: "Failed to generate Google OAuth URL" },
+      { status: 500 }
+    );
+  }
 }

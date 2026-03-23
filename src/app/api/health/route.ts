@@ -3,10 +3,14 @@ import { checkModelInfo, getAverageTTFT } from "@/lib/model-advisor";
 import { OLLAMA_MODEL } from "@/shared/constants";
 
 export async function GET(): Promise<Response> {
-  const [online, modelInfo] = await Promise.all([
+  const [onlineResult, modelInfoResult] = await Promise.allSettled([
     checkOllamaHealth(),
     checkModelInfo(),
   ]);
+  const online = onlineResult.status === "fulfilled" ? onlineResult.value : false;
+  const modelInfo = modelInfoResult.status === "fulfilled"
+    ? modelInfoResult.value
+    : { quantizationLevel: null, parameterSize: null, family: null, isHeavyPrecision: false, suggestion: null };
 
   const avgTtftMs = getAverageTTFT();
 
