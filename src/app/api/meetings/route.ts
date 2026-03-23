@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       source,
     }).returning();
 
-    return Response.json({ meeting });
+    return Response.json({ meeting }, { status: 201 });
   } catch (err) {
     return Response.json({ error: String(err) }, { status: 500 });
   }

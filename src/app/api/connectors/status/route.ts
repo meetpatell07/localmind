@@ -4,12 +4,19 @@ import { getNotionConnectionStatus, disconnectNotion } from "@/connectors/notion
 
 export async function GET(): Promise<Response> {
   try {
-    const [google, notion] = await Promise.all([
+    const [googleResult, notionResult] = await Promise.allSettled([
       getGoogleConnectionStatus(),
       getNotionConnectionStatus(),
     ]);
 
-    const calendar = google.connected; // shares Google OAuth
+    const google = googleResult.status === "fulfilled"
+      ? googleResult.value
+      : { connected: false as const };
+    const notion = notionResult.status === "fulfilled"
+      ? notionResult.value
+      : { connected: false as const };
+
+    const calendar = google.connected;
 
     return NextResponse.json({
       connectors: {

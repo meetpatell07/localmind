@@ -23,8 +23,8 @@ export async function GET(req: Request): Promise<Response> {
       .orderBy(desc(entities.mentionCount))
       .limit(50);
 
-    // Fetch active relationships for each entity
-    const enriched = await Promise.all(
+    // Fetch active relationships for each entity — use allSettled so one failure doesn't break all
+    const results = await Promise.allSettled(
       rows.map(async (entity) => {
         const rels = await db
           .select({
@@ -43,6 +43,10 @@ export async function GET(req: Request): Promise<Response> {
 
         return { ...entity, relationships: rels };
       })
+    );
+
+    const enriched = results.map((r, i) =>
+      r.status === "fulfilled" ? r.value : { ...rows[i], relationships: [] }
     );
 
     return Response.json({ entities: enriched });
@@ -77,7 +81,7 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   if (type === "entity-search") {
-    const q = searchParams.get("q") ?? "";
+    const q = (searchParams.get("q") ?? "").replace(/[%_\\]/g, "\\$&");
     const rows = await db
       .select()
       .from(entities)

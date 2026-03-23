@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     "googleapis",
     "google-auth-library",
     "drizzle-orm",
+    "@notionhq/notion-mcp-server",
+    "@ai-sdk/mcp",
   ],
 };
 

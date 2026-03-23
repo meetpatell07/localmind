@@ -45,7 +45,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const userText: string = (() => {
-    if (lastUserMsg.parts) {
+    if (Array.isArray(lastUserMsg.parts)) {
       const textPart = (lastUserMsg.parts as Array<{ type: string; text?: string }>)
         .find((p) => p.type === "text");
       if (textPart?.text) return textPart.text;

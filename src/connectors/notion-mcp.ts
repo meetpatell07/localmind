@@ -104,13 +104,25 @@ async function getMCPClient(): Promise<MCPClient | null> {
     },
   });
 
-  mcpClient = await createMCPClient({
-    transport,
-    name: "localmind-notion",
-    onUncaughtError: (err) => {
-      console.error("[notion-mcp] uncaught error:", err);
-    },
-  });
+  // Reset cached client if the transport closes unexpectedly
+  transport.onclose = () => {
+    console.warn("[notion-mcp] transport closed unexpectedly, resetting client");
+    mcpClient = null;
+  };
+
+  try {
+    mcpClient = await createMCPClient({
+      transport,
+      name: "localmind-notion",
+      onUncaughtError: (err) => {
+        console.error("[notion-mcp] uncaught error:", err);
+        mcpClient = null;
+      },
+    });
+  } catch (err) {
+    console.error("[notion-mcp] failed to create client:", err);
+    return null;
+  }
 
   return mcpClient;
 }

@@ -92,8 +92,8 @@ Extract:
         tags: ["meeting", meeting.title.toLowerCase().replace(/\s+/g, "-").slice(0, 40)],
       });
       tasksCreated++;
-    } catch {
-      // Non-fatal — continue with other tasks
+    } catch (err) {
+      console.error("[meetings/process] failed to create task:", item.task, err);
     }
   }
 
@@ -125,24 +125,32 @@ Extract:
     .catch(() => {});
 
   // ── Step 5: Persist processed data to DB ─────────────────────────────────
-  const [updated] = await db
-    .update(meetings)
-    .set({
-      summary: extracted.summary,
-      actionItems: extracted.actionItems,
-      decisions: extracted.decisions,
-      topics: extracted.topics,
-      participants: allParticipants,
-      tasksCreated,
-      processedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(meetings.id, id))
-    .returning();
+  try {
+    const [updated] = await db
+      .update(meetings)
+      .set({
+        summary: extracted.summary,
+        actionItems: extracted.actionItems,
+        decisions: extracted.decisions,
+        topics: extracted.topics,
+        participants: allParticipants,
+        tasksCreated,
+        processedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(meetings.id, id))
+      .returning();
 
-  return Response.json({
-    meeting: updated,
-    tasksCreated,
-    entitiesQueued: true,
-  });
+    return Response.json({
+      meeting: updated,
+      tasksCreated,
+      entitiesQueued: true,
+    });
+  } catch (err) {
+    console.error("[meetings/process] DB update failed:", err);
+    return Response.json(
+      { error: "Processing completed but failed to save results", tasksCreated },
+      { status: 500 },
+    );
+  }
 }

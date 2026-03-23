@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getSessionList, createSession, deleteSession } from "@/memory/episodic";
 
 export async function GET() {
@@ -20,10 +21,20 @@ export async function POST() {
 }
 
 export async function DELETE(req: Request) {
+  let body: unknown;
   try {
-    const { sessionId } = (await req.json()) as { sessionId: string };
-    if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });
-    await deleteSession(sessionId);
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const parsed = z.object({ sessionId: z.string().uuid() }).safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Valid sessionId (UUID) required" }, { status: 400 });
+  }
+
+  try {
+    await deleteSession(parsed.data.sessionId);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

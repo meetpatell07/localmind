@@ -308,7 +308,14 @@ async function handleVoiceNote(
     return;
   }
 
-  const result = await transcribeAudio(downloaded.buffer, downloaded.fileName);
+  let result: Awaited<ReturnType<typeof transcribeAudio>>;
+  try {
+    result = await transcribeAudio(downloaded.buffer, downloaded.fileName);
+  } catch (err) {
+    console.error("[telegram] transcription failed:", err);
+    await sendMessage(chatId, "❌ Transcription service error. Try again or type your message.");
+    return;
+  }
   if (!result || !result.text) {
     await sendMessage(chatId, "❌ Couldn't transcribe the voice note. Try again or type your message.");
     return;
