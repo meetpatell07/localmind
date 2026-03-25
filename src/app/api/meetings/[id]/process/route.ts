@@ -35,6 +35,11 @@ const MeetingExtractionSchema = z.object({
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  // Validate UUID format before hitting the DB
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return Response.json({ error: "Invalid meeting ID" }, { status: 400 });
+  }
+
   // Load meeting
   const [meeting] = await db.select().from(meetings).where(eq(meetings.id, id)).limit(1);
   if (!meeting) return Response.json({ error: "Meeting not found" }, { status: 404 });
@@ -42,7 +47,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "No transcript to process" }, { status: 400 });
   }
 
-  // Truncate transcript to avoid exceeding context window (~8k tokens safe limit for qwen3:8b)
+  // Guard against double-processing — return existing results if already processed
+  if (meeting.processedAt) {
+    return Response.json({
+      meeting,
+      tasksCreated: meeting.tasksCreated ?? 0,
+      entitiesQueued: false,
+      alreadyProcessed: true,
+    });
+  }
+
+  // Truncate transcript to avoid exceeding context window (~4k tokens safe limit for qwen3:8b)
   const transcriptForAI = meeting.transcript.slice(0, 16000);
 
   // ── Step 1: Extract structured data from transcript ──────────────────────

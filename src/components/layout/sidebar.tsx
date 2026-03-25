@@ -12,10 +12,7 @@ import {
   Mail01Icon,
   Setting07Icon,
   Home01Icon,
-  FolderOpenIcon,
-  PlusSignIcon,
   GoogleDriveIcon,
-  CameraVideoIcon,
 } from "hugeicons-react";
 import { OllamaStatus } from "@/components/layout/ollama-status";
 
@@ -28,12 +25,8 @@ const sidebarItems = [
   { label: "Voice", path: "/voice", icon: Mic01Icon },
   { label: "Email", path: "/email", icon: Mail01Icon },
   { label: "Drive", path: "/drive", icon: GoogleDriveIcon },
-  { label: "Meetings", path: "/meetings", icon: CameraVideoIcon },
 ];
 
-const contextItems = [
-  { label: "Engineering", path: "/contexts/engineering", icon: FolderOpenIcon },
-];
 
 const bottomSidebarItems = [
   { label: "Settings", path: "/settings", icon: Setting07Icon },
@@ -129,56 +122,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 })}
               </ul>
             </nav>
-
-            <div className="mt-8">
-              <div className="flex items-center justify-between px-2 mb-2">
-                <span className="text-xs font-semibold text-gray-500 tracking-wider">CONTEXTS</span>
-                <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <PlusSignIcon className="size-4" />
-                </button>
-              </div>
-              <ul className="space-y-0.5">
-                {contextItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item.path);
-
-                  return (
-                    <li key={item.label}>
-                      <Link
-                        href={item.path}
-                        onClick={() => {
-                          if (mobileOpen) onMobileClose?.();
-                        }}
-                        className={cn(
-                          "group flex w-full items-center gap-3 rounded-lg text-left hover:bg-gray-50 active:bg-gray-100",
-                          active && "bg-gray-50 text-foreground"
-                        )}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition">
-                          <Icon
-                            className={cn(
-                              "h-4 w-4",
-                              active ? "text-blue-600" : "text-blue-500"
-                            )}
-                            strokeWidth={1.5}
-                            aria-hidden
-                          />
-                        </span>
-                        <span
-                          className={cn(
-                            "text-sm font-medium",
-                            active ? "text-foreground font-semibold" : "text-muted-foreground"
-                          )}
-                        >
-                          {item.label}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
 
             <div className="mt-auto pt-2">
               <ul className="space-y-0.5">

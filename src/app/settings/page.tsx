@@ -746,7 +746,7 @@ function AboutSection() {
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900">LocalMind</p>
-            <p className="text-xs text-gray-400 mt-0.5">v0.1.0 · localhost</p>
+            <p className="text-xs text-gray-400 mt-0.5">v1.0.0 · open source</p>
           </div>
         </div>
 

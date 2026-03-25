@@ -15,6 +15,7 @@ import { settings, connectors } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 let mcpClient: MCPClient | null = null;
+let mcpClientPromise: Promise<MCPClient | null> | null = null;
 
 /** Load the Notion token from the settings table. */
 export async function loadNotionToken(): Promise<string | null> {
@@ -88,47 +89,57 @@ export async function getNotionConnectionStatus(): Promise<{
 /** Get or create the MCP client. Returns null if no token is configured. */
 async function getMCPClient(): Promise<MCPClient | null> {
   if (mcpClient) return mcpClient;
+  // Deduplicate concurrent cold-start calls — only one npx process spawned
+  if (mcpClientPromise) return mcpClientPromise;
 
-  const token = await loadNotionToken();
-  if (!token) return null;
+  mcpClientPromise = (async () => {
+    const token = await loadNotionToken();
+    if (!token) return null;
 
-  const transport = new StdioMCPTransport({
-    command: "npx",
-    args: ["-y", "@notionhq/notion-mcp-server"],
-    env: {
-      ...process.env as Record<string, string>,
-      OPENAPI_MCP_HEADERS: JSON.stringify({
-        Authorization: `Bearer ${token}`,
-        "Notion-Version": "2022-06-28",
-      }),
-    },
-  });
-
-  // Reset cached client if the transport closes unexpectedly
-  transport.onclose = () => {
-    console.warn("[notion-mcp] transport closed unexpectedly, resetting client");
-    mcpClient = null;
-  };
-
-  try {
-    mcpClient = await createMCPClient({
-      transport,
-      name: "localmind-notion",
-      onUncaughtError: (err) => {
-        console.error("[notion-mcp] uncaught error:", err);
-        mcpClient = null;
+    const transport = new StdioMCPTransport({
+      command: "npx",
+      args: ["-y", "@notionhq/notion-mcp-server"],
+      env: {
+        ...process.env as Record<string, string>,
+        OPENAPI_MCP_HEADERS: JSON.stringify({
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": "2022-06-28",
+        }),
       },
     });
-  } catch (err) {
-    console.error("[notion-mcp] failed to create client:", err);
-    return null;
-  }
 
-  return mcpClient;
+    // Reset cached client if the transport closes unexpectedly
+    transport.onclose = () => {
+      console.warn("[notion-mcp] transport closed unexpectedly, resetting client");
+      mcpClient = null;
+      mcpClientPromise = null;
+    };
+
+    try {
+      mcpClient = await createMCPClient({
+        transport,
+        name: "localmind-notion",
+        onUncaughtError: (err) => {
+          console.error("[notion-mcp] uncaught error:", err);
+          mcpClient = null;
+          mcpClientPromise = null;
+        },
+      });
+    } catch (err) {
+      console.error("[notion-mcp] failed to create client:", err);
+      mcpClientPromise = null;
+      return null;
+    }
+
+    return mcpClient;
+  })();
+
+  return mcpClientPromise;
 }
 
 /** Close the MCP client and reset state. */
 async function closeMCPClient(): Promise<void> {
+  mcpClientPromise = null;
   if (mcpClient) {
     try {
       await mcpClient.close();
