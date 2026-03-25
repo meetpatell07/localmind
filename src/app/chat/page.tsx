@@ -14,21 +14,38 @@ import { cn } from "@/lib/utils";
 function LiveChat({
   sessionIdRef,
   ollamaOnline,
-  error,
   onCheckOllama,
   initialMessages,
+  onSessionCreated,
 }: {
   sessionIdRef: React.RefObject<string | null>;
   ollamaOnline: boolean;
-  error: Error | undefined;
   onCheckOllama: () => void;
   initialMessages?: UIMessage[];
+  onSessionCreated: () => void;
 }) {
+  // Keep a stable ref to the callback so the transport closure doesn't go stale
+  const onSessionCreatedRef = useRef(onSessionCreated);
+  onSessionCreatedRef.current = onSessionCreated;
+
   const { messages, sendMessage, status, stop } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: () => ({ sessionId: sessionIdRef.current }),
+      // Intercept the response to capture the server-assigned session ID.
+      // This is the only place a session should be created — on the first
+      // message send, not on page load.
+      fetch: async (input, init) => {
+        const response = await globalThis.fetch(input, init);
+        const newSessionId = response.headers.get("X-Session-Id");
+        if (newSessionId && !sessionIdRef.current) {
+          sessionIdRef.current = newSessionId;
+          // Refresh sidebar once the session row exists in the DB
+          onSessionCreatedRef.current();
+        }
+        return response;
+      },
     }),
   });
 
@@ -36,7 +53,7 @@ function LiveChat({
 
   return (
     <>
-      {(!ollamaOnline || error) && (
+      {!ollamaOnline && (
         <div className="flex items-center gap-3 px-4 md:px-6 py-2 shrink-0 bg-red-50/50 border-b border-red-100">
           <AlertCircleIcon className="size-3.5 shrink-0 text-red-500" />
           <span className="text-xs font-medium text-red-600">
@@ -86,37 +103,31 @@ export default function ChatPage() {
     }
   }
 
-  async function createNewSession() {
-    const res = await fetch("/api/sessions", { method: "POST" });
-    const data = (await res.json()) as { sessionId?: string };
-    return data.sessionId ?? null;
-  }
-
-  async function initSession() {
-    const sessionId = await createNewSession();
-    if (sessionId) sessionIdRef.current = sessionId;
-  }
-
   useEffect(() => {
+    // Only check Ollama health on mount — no session pre-creation.
+    // Sessions are created lazily by the server on the first message sent.
     fetch("/api/health")
       .then((r) => setOllamaOnline(r.ok))
       .catch(() => setOllamaOnline(false));
 
-    initSession();
-
     return () => {
       if (retryRef.current) clearTimeout(retryRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleNewSession = useCallback(async () => {
-    const sessionId = await createNewSession();
-    if (sessionId) sessionIdRef.current = sessionId;
+  // Triggered by the custom fetch wrapper when the server returns X-Session-Id
+  const handleSessionCreated = useCallback(() => {
+    setSessionRefreshTick((t) => t + 1);
+  }, []);
+
+  const handleNewSession = useCallback(() => {
+    // Reset the session ref — the server will create a new session on the
+    // next message send and return the ID via X-Session-Id header.
+    // No API call needed here.
+    sessionIdRef.current = null;
     setViewingSessionId(null);
     setForkedMessages(undefined);
     setChatKey((k) => k + 1);
-    setSessionRefreshTick((t) => t + 1);
   }, []);
 
   const handleSelectSession = useCallback((id: string | null) => {
@@ -124,9 +135,8 @@ export default function ChatPage() {
   }, []);
 
   const handleFork = useCallback((newSessionId: string, messages: Array<{ role: string; content: string }>) => {
-    // Set the forked session as current
+    // Fork creates a real session in the DB, so we can set it immediately
     sessionIdRef.current = newSessionId;
-    // Convert DB messages to UIMessage format for initialMessages
     const uiMessages: UIMessage[] = messages.map((m, i) => ({
       id: `fork-${i}`,
       role: m.role as "user" | "assistant",
@@ -192,9 +202,9 @@ export default function ChatPage() {
             key={chatKey}
             sessionIdRef={sessionIdRef}
             ollamaOnline={ollamaOnline}
-            error={undefined}
             onCheckOllama={checkOllama}
             initialMessages={forkedMessages}
+            onSessionCreated={handleSessionCreated}
           />
         )}
       </div>

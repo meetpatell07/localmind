@@ -1,12 +1,14 @@
 # LocalMind
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Personal AI agent running entirely on your machine. Persistent memory across conversations, knowledge graph extraction, and a full dashboard — no cloud AI, no subscriptions.
 
 ---
 
 ## What it does
 
-- **Chat** with a local LLM (Qwen via Ollama) that remembers you across sessions, with a collapsible session sidebar to browse and replay past conversations
+- **Chat** with a local LLM (Qwen via Ollama) that remembers you across sessions — sessions are created lazily on your first message (not on page load), so no empty ghost sessions accumulate; collapsible sidebar to browse, replay, and fork past conversations
 - **4-layer memory**: episodic log → semantic embeddings → entity/relationship graph → AI-generated user profile
 - **Intelligent decay**: facts fade over time based on type (events decay in 7 days, people stay sharp for 120 days); re-mentioning anything refreshes it
 - **Self-reflection**: every 20 interactions the AI analyses your conversation style and adjusts its tone automatically
@@ -35,7 +37,7 @@ Personal AI agent running entirely on your machine. Persistent memory across con
 ## 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/localmind.git
+git clone https://github.com/meetpatell07/localmind.git
 cd localmind
 pnpm install
 ```
@@ -218,6 +220,22 @@ pnpm db:generate  # Generate migration from schema changes
 pnpm db:migrate   # Apply migrations to Neon
 pnpm db:studio    # Open Drizzle Studio (visual DB browser)
 ```
+
+---
+
+## Housekeeping
+
+### Clean up empty sessions
+
+Earlier versions of LocalMind pre-created a session on every page load, before any message was sent. If you have accumulated empty sessions in the sidebar, you can delete them from Neon:
+
+```sql
+-- Delete sessions that have no messages (created but never used)
+DELETE FROM sessions
+WHERE id NOT IN (SELECT DISTINCT session_id FROM conversations);
+```
+
+Run this in the **Neon SQL Editor**. Sessions with actual messages are untouched.
 
 ---
 

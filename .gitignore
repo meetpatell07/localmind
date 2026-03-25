@@ -13,3 +13,12 @@ models/
 drizzle/meta/
 .claude/
 CLAUDE.md
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Ruflo / claude-flow install artifacts
+.agent/
+.agents/
+skills-lock.json
+.claude-flow/
