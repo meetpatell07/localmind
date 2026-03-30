@@ -1,10 +1,6 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { getAuthenticatedClient } from "@/connectors/google-auth";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getGoogle(): Promise<any | null> {
-  try { const m = await import("googleapis"); return m.google; } catch { return null; }
-}
+import { google } from "googleapis";
 
 function getHeader(
   headers: Array<{ name?: string | null; value?: string | null }> | undefined,
@@ -22,9 +18,6 @@ export async function GET(req: Request): Promise<Response> {
   if (!auth) {
     return Response.json({ error: "Gmail not connected", connected: false }, { status: 200 });
   }
-  const google = await getGoogle();
-  if (!google) return Response.json({ error: "Gmail unavailable on this runtime", connected: false }, { status: 200 });
-
   try {
     const gmail = google.gmail({ version: "v1", auth });
 

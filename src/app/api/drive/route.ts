@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { listDriveFiles, searchDriveFiles } from "@/connectors/google-drive";
 

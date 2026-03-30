@@ -10,13 +10,8 @@
 import { generateObject } from "ai";
 import { extractionModel } from "@/agent/ollama";
 import { z } from "zod";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNodeModules(): Promise<{ path: any; fs: any } | null> {
-  try {
-    const [pathMod, fsMod] = await Promise.all([import("path"), import("fs/promises")]);
-    return { path: pathMod.default, fs: fsMod };
-  } catch { return null; }
-}
+import fs from "fs/promises";
+import path from "path";
 
 export const VAULT_CATEGORIES = [
   "Finance",
@@ -64,9 +59,7 @@ const CODE_EXTS = new Set([
 
 async function readTextPreview(filePath: string, maxChars = 2000): Promise<string | null> {
   try {
-    const mods = await getNodeModules();
-    if (!mods) return null;
-    const content = await mods.fs.readFile(filePath, "utf-8");
+    const content = await fs.readFile(filePath, "utf-8");
     return content.slice(0, maxChars);
   } catch {
     return null;
@@ -80,8 +73,7 @@ export async function analyzeFile(params: {
   absolutePath: string;
 }): Promise<FileAnalysis> {
   const { fileName, mimeType, absolutePath } = params;
-  const mods = await getNodeModules();
-  const ext = mods ? mods.path.extname(fileName).toLowerCase() : fileName.slice(fileName.lastIndexOf(".")).toLowerCase();
+  const ext = path.extname(fileName).toLowerCase();
 
   // Determine if we can read content
   const isReadable =

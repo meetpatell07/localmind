@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 /**
  * Telegram Webhook Setup — GET /api/telegram/setup
  *

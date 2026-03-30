@@ -1,17 +1,11 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { vaultFiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getVaultPath } from "@/vault/indexer";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNodeModules(): Promise<{ path: any; fs: any } | null> {
-  try {
-    const [p, f] = await Promise.all([import("path"), import("fs/promises")]);
-    return { path: p.default, fs: f };
-  } catch { return null; }
-}
+import path from "path";
+import fs from "fs/promises";
 
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
@@ -29,22 +23,18 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "File not found" }, { status: 404 });
   }
 
-  const mods = await getNodeModules();
-  if (!mods) return Response.json({ error: "File download unavailable on this runtime" }, { status: 503 });
-
   const { fileName, filePath, mimeType } = rows[0];
   const fullPath = getVaultPath(filePath);
 
   // Path traversal protection
   const vaultDir = getVaultPath("");
-  const resolved = mods.path.resolve(fullPath);
-  if (!resolved.startsWith(mods.path.resolve(vaultDir))) {
+  if (!path.resolve(fullPath).startsWith(path.resolve(vaultDir))) {
     return Response.json({ error: "Invalid file path" }, { status: 403 });
   }
 
-  let data: Uint8Array;
+  let data: Buffer;
   try {
-    data = await mods.fs.readFile(fullPath);
+    data = await fs.readFile(fullPath);
   } catch {
     return Response.json({ error: "File missing from disk" }, { status: 404 });
   }

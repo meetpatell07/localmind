@@ -1,13 +1,7 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { NextRequest } from "next/server";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNodeModules(): Promise<{ path: any; fs: any } | null> {
-  try {
-    const [p, f] = await Promise.all([import("path"), import("fs/promises")]);
-    return { path: p.default, fs: f };
-  } catch { return null; }
-}
+import path from "path";
+import fs from "fs/promises";
 import { ensureVaultDir, indexFile, listFiles, getVaultPath, getFilesByCategory, updateFileAnalysis, deleteFile } from "@/vault/indexer";
 import { analyzeFile } from "@/vault/analyzer";
 
@@ -34,24 +28,20 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const mods = await getNodeModules();
-  if (!mods) return Response.json({ error: "File upload unavailable on this runtime" }, { status: 503 });
-
   // Organize into YYYY/MM/DD
   const now = new Date();
   const subDir = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
   const fullDir = getVaultPath(subDir);
-  await mods.fs.mkdir(fullDir, { recursive: true });
+  await fs.mkdir(fullDir, { recursive: true });
 
   // Avoid collisions
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const uniqueName = `${Date.now()}_${safeName}`;
-  const relativePath = mods.path.join(subDir, uniqueName);
+  const relativePath = path.join(subDir, uniqueName);
   const fullPath = getVaultPath(relativePath);
 
   const arrayBuf = await file.arrayBuffer();
-  const buffer = new Uint8Array(arrayBuf);
-  await mods.fs.writeFile(fullPath, buffer);
+  await fs.writeFile(fullPath, new Uint8Array(arrayBuf));
 
   const record = await indexFile({
     fileName: file.name,

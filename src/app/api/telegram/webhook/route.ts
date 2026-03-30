@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 /**
  * Telegram Webhook — POST /api/telegram/webhook
  *
@@ -12,13 +12,8 @@ export const runtime = 'edge';
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
 import type { UIMessage } from "ai";
 import { z } from "zod";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNodeModules(): Promise<{ path: any; fs: any } | null> {
-  try {
-    const [p, f] = await Promise.all([import("path"), import("fs/promises")]);
-    return { path: p.default, fs: f };
-  } catch { return null; }
-}
+import path from "path";
+import fs from "fs/promises";
 import { chatModel } from "@/agent/ollama";
 import { allTools } from "@/agent/tools";
 import { getNotionTools, shouldUseNotionTools } from "@/connectors/notion-mcp";
@@ -253,26 +248,20 @@ async function handleFileUpload(
     return;
   }
 
-  // Save to vault (Node.js only — unavailable on edge)
-  const nodeMods = await getNodeModules();
-  if (!nodeMods) {
-    await sendMessage(chatId, "❌ File storage unavailable on this deployment.");
-    return;
-  }
-
+  // Save to vault
   await ensureVaultDir();
   const now = new Date();
   const subDir = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
   const fullDir = getVaultPath(subDir);
-  await nodeMods.fs.mkdir(fullDir, { recursive: true });
+  await fs.mkdir(fullDir, { recursive: true });
 
   const originalName = doc?.file_name ?? downloaded.fileName;
   const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const uniqueName = `${Date.now()}_${safeName}`;
-  const relativePath = nodeMods.path.join(subDir, uniqueName);
+  const relativePath = path.join(subDir, uniqueName);
   const fullPath = getVaultPath(relativePath);
 
-  await nodeMods.fs.writeFile(fullPath, downloaded.buffer);
+  await fs.writeFile(fullPath, downloaded.buffer);
 
   const mimeType = doc?.mime_type ?? downloaded.mimeType;
   const record = await indexFile({

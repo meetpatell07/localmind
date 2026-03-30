@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { getAuthUrl } from "@/connectors/google-auth";
 import { NextResponse } from "next/server";
 
