@@ -1,6 +1,12 @@
+// ── Ollama (used for embeddings only) ────────────────────────────────────────
 export const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-export const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "qwen3:8b";
-export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL ?? "nomic-embed-text";
+
+// ── Groq (used for chat + extraction) ────────────────────────────────────────
+export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+export const GROQ_MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+export const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
+// EMBEDDING_MODEL is no longer used — embeddings run locally via @huggingface/transformers
+// using nomic-ai/nomic-embed-text-v1 (ONNX, 768-dim)
 export const EMBEDDING_DIMS = 768;
 
 export const CHUNK_SIZE = 512;

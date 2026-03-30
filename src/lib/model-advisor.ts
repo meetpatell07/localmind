@@ -9,7 +9,7 @@
  * A rolling 10-request average is exposed for the health endpoint.
  */
 
-import { OLLAMA_BASE_URL, OLLAMA_MODEL } from "@/shared/constants";
+import { GROQ_MODEL } from "@/shared/constants";
 
 // Quantization levels that indicate full or near-full precision (heavy RAM/VRAM usage)
 const HEAVY_QUANTS = new Set(["F16", "F32", "BF16"]);
@@ -17,12 +17,12 @@ const HEAVY_QUANTS = new Set(["F16", "F32", "BF16"]);
 const QUANT_SUGGESTIONS: Record<string, string> = {
   F16: [
     "F16 precision uses ~16 GB VRAM and is 3-4× slower than a quantized model.",
-    `Switch to Q4_K_M (~4.9 GB, minimal quality loss): ollama pull ${OLLAMA_MODEL}`,
+    `Switch to Q4_K_M (~4.9 GB, minimal quality loss): ollama pull ${GROQ_MODEL}`,
     "Or create a Modelfile: FROM qwen3:8b\\nPARAMETER quantize Q4_K_M",
   ].join(" "),
   F32: [
     "F32 precision uses ~32 GB VRAM — unusable on most hardware.",
-    `Switch immediately: ollama pull ${OLLAMA_MODEL} (default ships as Q4_K_M)`,
+    `Switch immediately: ollama pull ${GROQ_MODEL} (default ships as Q4_K_M)`,
   ].join(" "),
   BF16: [
     "BF16 uses ~16 GB VRAM. Consider Q5_K_M (better quality/speed trade-off)",
@@ -55,8 +55,7 @@ export function recordTTFT(ms: number): void {
   if (ms > 10_000) {
     console.warn(
       `[model-advisor] Slow TTFT: ${ms} ms (threshold: 10 000 ms). ` +
-        `Check model quantization: curl -s ${OLLAMA_BASE_URL}/api/show ` +
-        `-d '{"name":"${OLLAMA_MODEL}"}' | jq .details.quantization_level`,
+        `Model: ${GROQ_MODEL}. Check xAI status at https://status.x.ai`,
     );
   }
 }
@@ -91,47 +90,15 @@ function emptyModelInfo(): ModelInfo {
 }
 
 /**
- * Query Ollama /api/show for the active model's quantization details.
- * Returns empty info on any error (Ollama offline, model not loaded yet, etc.)
+ * Grok (xAI) is a cloud API — quantization details are not exposed.
+ * Returns static info based on the configured model name.
  */
 export async function checkModelInfo(): Promise<ModelInfo> {
-  try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/show`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: OLLAMA_MODEL }),
-      signal: AbortSignal.timeout(5_000),
-    });
-
-    if (!res.ok) return emptyModelInfo();
-
-    const data = (await res.json()) as {
-      details?: {
-        quantization_level?: string;
-        parameter_size?: string;
-        family?: string;
-      };
-    };
-
-    const quant = data.details?.quantization_level ?? null;
-    const normalized = quant?.toUpperCase() ?? null;
-    const isHeavyPrecision = normalized ? HEAVY_QUANTS.has(normalized) : false;
-
-    if (isHeavyPrecision && normalized) {
-      console.warn(
-        `[model-advisor] ${OLLAMA_MODEL} is running at ${quant} precision. ` +
-          (QUANT_SUGGESTIONS[normalized] ?? "Consider switching to a quantized variant."),
-      );
-    }
-
-    return {
-      quantizationLevel: quant,
-      parameterSize: data.details?.parameter_size ?? null,
-      family: data.details?.family ?? null,
-      isHeavyPrecision,
-      suggestion: normalized ? (QUANT_SUGGESTIONS[normalized] ?? null) : null,
-    };
-  } catch {
-    return emptyModelInfo();
-  }
+  return {
+    quantizationLevel: null,
+    parameterSize: null,
+    family: "grok",
+    isHeavyPrecision: false,
+    suggestion: null,
+  };
 }

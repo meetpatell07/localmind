@@ -4,28 +4,13 @@ import { entities, relationships, embeddings, atomicFacts } from "@/db/schema";
 import { eq, and, ilike, sql, inArray, gte } from "drizzle-orm";
 import type { ExtractionResult } from "@/agent/extract";
 import type { EntityWithRelationships } from "@/shared/types";
-import { OLLAMA_BASE_URL, EMBEDDING_MODEL } from "@/shared/constants";
+import { getDocumentEmbedding } from "@/lib/embeddings";
 import { hot, HOT_KEY } from "./hot";
 import { reinforceEntity, DECAY_ARCHIVE_THRESHOLD } from "./decay";
 import { extractionModel } from "@/agent/ollama";
 
-// ── Embedding helper ──────────────────────────────────────────────────────────
-// Inlined here so entity.ts has no circular dependency on semantic.ts.
-async function embedText(text: string): Promise<number[] | null> {
-  try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: EMBEDDING_MODEL, prompt: text }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { embedding?: number[] };
-    return data.embedding ?? null;
-  } catch {
-    return null;
-  }
-}
+// entity names are treated as short documents for dedup embedding
+const embedText = (text: string) => getDocumentEmbedding(text);
 
 // Similarity threshold above which two entity names are considered the same node.
 const DEDUP_SIMILARITY_THRESHOLD = 0.88;

@@ -57,7 +57,7 @@ function LiveChat({
         <div className="flex items-center gap-3 px-4 md:px-6 py-2 shrink-0 bg-red-50/50 border-b border-red-100">
           <AlertCircleIcon className="size-3.5 shrink-0 text-red-500" />
           <span className="text-xs font-medium text-red-600">
-            Ollama is starting up — responses will resume shortly
+            AI is unavailable — check your XAI_API_KEY in .env.local
           </span>
           <button
             className="ml-auto flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors"

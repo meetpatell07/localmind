@@ -3,9 +3,9 @@ import { z } from "zod";
 import { extractionModel } from "@/agent/ollama";
 import { db } from "@/db";
 import { entities, relationships } from "@/db/schema";
-import { ilike, eq, and, inArray } from "drizzle-orm";
+import { ilike, eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { OLLAMA_BASE_URL, EMBEDDING_MODEL } from "@/shared/constants";
+import { getQueryEmbedding } from "@/lib/embeddings";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -48,24 +48,6 @@ const QueryClassificationSchema = z.object({
   ),
 });
 
-// ── Embedding helper (mirrors semantic.ts) ─────────────────────────────────────
-
-async function getEmbedding(text: string): Promise<number[] | null> {
-  try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: EMBEDDING_MODEL, prompt: text }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { embedding?: number[] };
-    return data.embedding ?? null;
-  } catch {
-    return null;
-  }
-}
-
 // ── Recency-weighted pgvector search ──────────────────────────────────────────
 // Score = cosine_similarity * exp(-λ * age_in_days)
 // λ = 0.005 means a 140-day-old chunk scores ~50% of a fresh chunk at equal similarity.
@@ -74,7 +56,7 @@ async function searchSimilarWeighted(
   query: string,
   limit: number
 ): Promise<SemanticChunk[]> {
-  const embedding = await getEmbedding(query);
+  const embedding = await getQueryEmbedding(query);
   if (!embedding) return [];
 
   const vectorStr = `[${embedding.join(",")}]`;

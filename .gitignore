@@ -4,7 +4,7 @@ dist/
 .env
 .env.local
 .env.*.local
-vault/
+/vault/
 scripts/error-log.jsonl
 .DS_Store
 .vscode/

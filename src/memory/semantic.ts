@@ -1,23 +1,8 @@
 import { db } from "@/db";
 import { embeddings } from "@/db/schema";
-import { OLLAMA_BASE_URL, EMBEDDING_MODEL, SIMILARITY_TOP_K } from "@/shared/constants";
+import { SIMILARITY_TOP_K } from "@/shared/constants";
 import { sql } from "drizzle-orm";
-
-async function getEmbedding(text: string): Promise<number[] | null> {
-  try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: EMBEDDING_MODEL, prompt: text }),
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { embedding?: number[] };
-    return data.embedding ?? null;
-  } catch {
-    return null;
-  }
-}
+import { getDocumentEmbedding, getQueryEmbedding } from "@/lib/embeddings";
 
 export async function embedAndStore(
   content: string,
@@ -25,12 +10,11 @@ export async function embedAndStore(
   sourceId?: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  const embedding = await getEmbedding(content);
+  const embedding = await getDocumentEmbedding(content);
   if (!embedding) return;
 
   const vectorStr = `[${embedding.join(",")}]`;
 
-  // Insert base row first, then update with vector via raw SQL
   const [row] = await db
     .insert(embeddings)
     .values({ contentText: content, sourceType, sourceId, metadata })
@@ -47,7 +31,7 @@ export async function searchSimilar(
   query: string,
   limit = SIMILARITY_TOP_K
 ): Promise<string[]> {
-  const embedding = await getEmbedding(query);
+  const embedding = await getQueryEmbedding(query);
   if (!embedding) return [];
 
   const vectorStr = `[${embedding.join(",")}]`;

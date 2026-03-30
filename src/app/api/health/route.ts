@@ -1,6 +1,6 @@
 import { checkOllamaHealth } from "@/agent/ollama";
 import { checkModelInfo, getAverageTTFT } from "@/lib/model-advisor";
-import { OLLAMA_MODEL } from "@/shared/constants";
+import { GROQ_MODEL } from "@/shared/constants";
 
 export async function GET(): Promise<Response> {
   const [onlineResult, modelInfoResult] = await Promise.allSettled([
@@ -18,7 +18,7 @@ export async function GET(): Promise<Response> {
     {
       online,
       model: {
-        name: OLLAMA_MODEL,
+        name: GROQ_MODEL,
         quantizationLevel: modelInfo.quantizationLevel,
         parameterSize:     modelInfo.parameterSize,
         family:            modelInfo.family,

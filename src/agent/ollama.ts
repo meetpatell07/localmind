@@ -1,21 +1,19 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { OLLAMA_BASE_URL, OLLAMA_MODEL } from "@/shared/constants";
+import { GROQ_BASE_URL, GROQ_API_KEY, GROQ_MODEL } from "@/shared/constants";
 
-// Ollama exposes an OpenAI-compatible API at /v1
-const ollamaProvider = createOpenAI({
-  baseURL: `${OLLAMA_BASE_URL}/v1`,
-  apiKey: "ollama", // required by the client, ignored by Ollama
+// Groq exposes an OpenAI-compatible API at https://api.groq.com/openai/v1
+const groqProvider = createOpenAI({
+  baseURL: GROQ_BASE_URL,
+  apiKey: GROQ_API_KEY,
 });
 
-// Use .chat() to force /v1/chat/completions — Ollama doesn't support /v1/responses
-export const chatModel = ollamaProvider.chat(OLLAMA_MODEL);
-export const extractionModel = ollamaProvider.chat(OLLAMA_MODEL);
+export const chatModel = groqProvider.chat(GROQ_MODEL);
+
+// Use a fast model for structured extraction
+const extractionModelName = process.env.GROQ_EXTRACTION_MODEL ?? "llama-3.1-8b-instant";
+export const extractionModel = groqProvider.chat(extractionModelName);
 
 export async function checkOllamaHealth(): Promise<boolean> {
-  try {
-    const res = await fetch(OLLAMA_BASE_URL, { signal: AbortSignal.timeout(3000) });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  // Groq is a cloud API — available as long as the key is configured.
+  return GROQ_API_KEY.length > 0;
 }

@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     "drizzle-orm",
     "@notionhq/notion-mcp-server",
     "@ai-sdk/mcp",
+    "@huggingface/transformers",
   ],
 };
 
