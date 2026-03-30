@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { checkOllamaHealth } from "@/agent/ollama";
 import { checkModelInfo, getAverageTTFT } from "@/lib/model-advisor";
 import { GROQ_MODEL } from "@/shared/constants";

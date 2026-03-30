@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 /**
  * Telegram Webhook — POST /api/telegram/webhook
  *

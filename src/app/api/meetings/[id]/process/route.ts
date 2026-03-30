@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { generateObject } from "ai";
 import { z } from "zod";
 import { eq } from "drizzle-orm";

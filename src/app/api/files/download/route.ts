@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { vaultFiles } from "@/db/schema";

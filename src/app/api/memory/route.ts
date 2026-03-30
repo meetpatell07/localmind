@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { db } from "@/db";
 import { entities, relationships, conversations } from "@/db/schema";
 import { getProfile, rebuildProfile } from "@/memory/profile";

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { google } from "googleapis";
 import { getAuthenticatedClient } from "@/connectors/google-auth";
 

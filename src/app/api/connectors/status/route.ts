@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from "next/server";
 import { getGoogleConnectionStatus, disconnectGoogle } from "@/connectors/google-auth";
 import { getNotionConnectionStatus, disconnectNotion } from "@/connectors/notion-mcp";

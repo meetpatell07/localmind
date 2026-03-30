@@ -1,13 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // These packages are server-only and must NOT be bundled by Turbopack/webpack.
-  // Without this, Next.js tries to statically analyse + bundle them, which causes
-  // extreme memory pressure and can hang compilation entirely.
-  //   googleapis@171  — massive (hundreds of API modules)
-  //   google-auth-library — heavy OAuth2 client
-  //   drizzle-orm — has native bindings that can't be bundled
-  //   @neondatabase/serverless — HTTP driver, uses native crypto
+  // Node.js-only packages that must not be bundled by webpack/Turbopack.
+  // On Cloudflare edge these will be unavailable at runtime — all callers
+  // handle the failure gracefully (try/catch → null/empty returns).
   serverExternalPackages: [
     "@neondatabase/serverless",
     "googleapis",
@@ -15,7 +11,9 @@ const nextConfig: NextConfig = {
     "drizzle-orm",
     "@notionhq/notion-mcp-server",
     "@ai-sdk/mcp",
-    "@huggingface/transformers",
+    // @huggingface/transformers is dynamically imported — NOT listed here
+    // so the bundler can tree-shake it. The dynamic import fails silently
+    // on edge and embeddings return null (memory search degrades gracefully).
   ],
 };
 

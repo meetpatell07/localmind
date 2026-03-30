@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { db } from "@/db";
 import { userProfile } from "@/db/schema";
 import { invalidateUserIdentityCache } from "@/memory";

@@ -1,5 +1,7 @@
 "use client";
 
+export const runtime = 'edge';
+
 import { use, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
