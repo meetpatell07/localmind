@@ -1,4 +1,5 @@
 import type { MemoryContext, UserIdentity } from "@/shared/types";
+import type { RetrievalContext } from "@/agent/retrieval-agent";
 
 // ── Base identity + hard rules (ALWAYS first — never pushed down by memory) ──
 
@@ -138,11 +139,17 @@ function deduplicateEntities(ctx: MemoryContext): MemoryContext {
 //   7. SEMANTIC CONTEXT (L2 — only if retrieved)
 //   8. SESSION SUMMARIES (compressed past sessions)
 
-export function buildSystemPrompt(rawCtx: MemoryContext): string {
+export function buildSystemPrompt(
+  rawCtx: MemoryContext,
+  retrievalCtx?: RetrievalContext,
+  agentSystemPrompt?: string
+): string {
   // Deduplicate before serializing
   const ctx = deduplicateEntities(rawCtx);
 
-  const parts: string[] = [IDENTITY_AND_RULES];
+  // If an agent-specific prompt is provided, use it in place of the default identity block
+  const identityBlock = agentSystemPrompt ?? IDENTITY_AND_RULES;
+  const parts: string[] = [identityBlock];
 
   // 2. Communication style (adapt tone)
   if (ctx.styleNote) {
@@ -203,6 +210,19 @@ export function buildSystemPrompt(rawCtx: MemoryContext): string {
   if (ctx.relevantMemories.length > 0) {
     const deduped = [...new Set(ctx.relevantMemories)];
     parts.push(`\n━━━ RELEVANT PAST CONTEXT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${deduped.map((m) => `- ${m.slice(0, 300)}`).join("\n")}`);
+  }
+
+  // 7.5. Pre-fetched retrieval context (from runRetrievalAgent — runs before prompt build)
+  if (retrievalCtx) {
+    if (retrievalCtx.semanticChunks.length > 0) {
+      const chunkLines = retrievalCtx.semanticChunks
+        .map((c) => `- [${(c.similarity * 100).toFixed(0)}% match] ${c.text.slice(0, 300)}`)
+        .join("\n");
+      parts.push(`\n━━━ PRE-FETCHED SEMANTIC MEMORIES (recency-weighted) ━━━━━━━━━━━━━━━━━━━━━━━━\n${chunkLines}`);
+    }
+    if (retrievalCtx.dedupedFacts.length > 0) {
+      parts.push(`\n━━━ PRE-FETCHED ENTITY FACTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${retrievalCtx.dedupedFacts.map((f) => `- ${f}`).join("\n")}`);
+    }
   }
 
   // 8. Session summaries (compressed past sessions)

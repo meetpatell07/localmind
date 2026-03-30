@@ -13,6 +13,7 @@ import {
   Setting07Icon,
   Home01Icon,
   GoogleDriveIcon,
+  UserMultiple02Icon,
 } from "hugeicons-react";
 import { OllamaStatus } from "@/components/layout/ollama-status";
 
@@ -25,6 +26,7 @@ const sidebarItems = [
   { label: "Voice", path: "/voice", icon: Mic01Icon },
   { label: "Email", path: "/email", icon: Mail01Icon },
   { label: "Drive", path: "/drive", icon: GoogleDriveIcon },
+  { label: "Agents", path: "/agents", icon: UserMultiple02Icon },
 ];
 
 
