@@ -19,6 +19,7 @@ export async function GET(req: Request): Promise<Response> {
 
   try {
     const tokens = await exchangeCodeForTokens(code);
+    if (!tokens) return NextResponse.redirect(`${base}/settings?error=google_unavailable`);
     await saveGoogleTokens(tokens);
     return NextResponse.redirect(`${base}/settings?connected=google`);
   } catch (err) {

@@ -1,6 +1,10 @@
 export const runtime = 'edge';
-import { google } from "googleapis";
 import { getAuthenticatedClient } from "@/connectors/google-auth";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getGoogle(): Promise<any | null> {
+  try { const m = await import("googleapis"); return m.google; } catch { return null; }
+}
 
 function getHeader(
   headers: Array<{ name?: string | null; value?: string | null }> | undefined,
@@ -18,6 +22,8 @@ export async function GET(req: Request): Promise<Response> {
   if (!auth) {
     return Response.json({ error: "Gmail not connected", connected: false }, { status: 200 });
   }
+  const google = await getGoogle();
+  if (!google) return Response.json({ error: "Gmail unavailable on this runtime", connected: false }, { status: 200 });
 
   try {
     const gmail = google.gmail({ version: "v1", auth });
@@ -33,7 +39,8 @@ export async function GET(req: Request): Promise<Response> {
     }
 
     const emails = await Promise.all(
-      listRes.data.messages.map(async (msg) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      listRes.data.messages.map(async (msg: any) => {
         const detail = await gmail.users.messages.get({
           userId: "me",
           id: msg.id!,

@@ -4,16 +4,15 @@ const nextConfig: NextConfig = {
   // Node.js-only packages that must not be bundled by webpack/Turbopack.
   // On Cloudflare edge these will be unavailable at runtime — all callers
   // handle the failure gracefully (try/catch → null/empty returns).
+  // serverExternalPackages: only truly Node.js-only packages that must NOT be
+  // bundled. drizzle-orm/neon-http and @neondatabase/serverless are edge-
+  // compatible (HTTP mode) so they must NOT be listed here — listing them
+  // causes Next.js to downgrade routes that import them to Node.js runtime,
+  // breaking Cloudflare Pages edge deployment.
+  // googleapis / google-auth-library are imported dynamically in connectors.
   serverExternalPackages: [
-    "@neondatabase/serverless",
-    "googleapis",
-    "google-auth-library",
-    "drizzle-orm",
     "@notionhq/notion-mcp-server",
     "@ai-sdk/mcp",
-    // @huggingface/transformers is dynamically imported — NOT listed here
-    // so the bundler can tree-shake it. The dynamic import fails silently
-    // on edge and embeddings return null (memory search degrades gracefully).
   ],
 };
 

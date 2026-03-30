@@ -11,7 +11,8 @@ export async function GET(): Promise<Response> {
   }
 
   try {
-    const url = getAuthUrl();
+    const url = await getAuthUrl();
+    if (!url) return NextResponse.json({ error: "Google Auth unavailable on this runtime" }, { status: 503 });
     return NextResponse.redirect(url);
   } catch (err) {
     console.error("[google/auth]", err);

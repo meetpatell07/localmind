@@ -4,8 +4,17 @@
  * All calls are read-only (drive.readonly scope).
  */
 
-import { google } from "googleapis";
 import { getAuthenticatedClient } from "./google-auth";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getGoogle(): Promise<any | null> {
+  try {
+    const mod = await import("googleapis");
+    return mod.google;
+  } catch {
+    return null;
+  }
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +56,8 @@ export async function listDriveFiles(opts: {
 }): Promise<{ files: DriveFile[]; error?: string }> {
   const auth = await getAuthenticatedClient();
   if (!auth) return { files: [], error: "Google Drive not connected." };
+  const google = await getGoogle();
+  if (!google) return { files: [], error: "Google API unavailable on this runtime." };
 
   try {
     const drive = google.drive({ version: "v3", auth });
@@ -64,7 +75,8 @@ export async function listDriveFiles(opts: {
       fields: "files(id,name,mimeType,modifiedTime,size,webViewLink,starred,iconLink)",
     });
 
-    const files: DriveFile[] = (res.data.files ?? []).map((f) => ({
+    const files: DriveFile[] = // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (res.data.files ?? []).map((f: any) => ({
       id:           f.id ?? "",
       name:         f.name ?? "",
       mimeType:     f.mimeType ?? "",
@@ -89,6 +101,8 @@ export async function searchDriveFiles(
 ): Promise<{ files: DriveFile[]; error?: string }> {
   const auth = await getAuthenticatedClient();
   if (!auth) return { files: [], error: "Google Drive not connected." };
+  const google = await getGoogle();
+  if (!google) return { files: [], error: "Google API unavailable on this runtime." };
 
   try {
     const drive = google.drive({ version: "v3", auth });
@@ -104,7 +118,8 @@ export async function searchDriveFiles(
       fields: "files(id,name,mimeType,modifiedTime,size,webViewLink,starred,iconLink)",
     });
 
-    const files: DriveFile[] = (res.data.files ?? []).map((f) => ({
+    const files: DriveFile[] = // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (res.data.files ?? []).map((f: any) => ({
       id:           f.id ?? "",
       name:         f.name ?? "",
       mimeType:     f.mimeType ?? "",
@@ -135,11 +150,11 @@ export async function getDriveFileContent(fileId: string): Promise<{
 }> {
   const auth = await getAuthenticatedClient();
   if (!auth) {
-    return {
-      id: fileId, name: "", mimeType: "", content: null,
-      modifiedTime: null, size: null, webViewLink: null,
-      error: "Google Drive not connected.",
-    };
+    return { id: fileId, name: "", mimeType: "", content: null, modifiedTime: null, size: null, webViewLink: null, error: "Google Drive not connected." };
+  }
+  const google = await getGoogle();
+  if (!google) {
+    return { id: fileId, name: "", mimeType: "", content: null, modifiedTime: null, size: null, webViewLink: null, error: "Google API unavailable on this runtime." };
   }
 
   try {

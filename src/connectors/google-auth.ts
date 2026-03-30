@@ -6,19 +6,27 @@
  *   value = { access_token, refresh_token, expiry_date, scope }
  *
  * The connector row in `connectors` table tracks connection status.
+ *
+ * googleapis and google-auth-library are dynamically imported so this module
+ * can be imported in edge-runtime route files. At runtime on Cloudflare edge,
+ * the dynamic import will fail and functions return null/throw — callers handle
+ * this gracefully.
  */
 
-import { google } from "googleapis";
-import type { OAuth2Client, Credentials } from "google-auth-library";
 import { db } from "@/db";
 import { settings, connectors } from "@/db/schema";
 import { eq } from "drizzle-orm";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type OAuth2Client = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Credentials = any;
 
 // ── Scopes ────────────────────────────────────────────────────────────────────
 export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
-  "https://www.googleapis.com/auth/gmail.compose",  // draft creation
+  "https://www.googleapis.com/auth/gmail.compose",
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/drive.readonly",
@@ -28,28 +36,44 @@ export const GOOGLE_SCOPES = [
 
 const TOKENS_KEY = "connector:google:tokens";
 
+// ── Dynamic googleapis loader ────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getGoogle(): Promise<any | null> {
+  try {
+    const mod = await import("googleapis");
+    return mod.google;
+  } catch {
+    return null;
+  }
+}
+
 // ── OAuth2 client factory ─────────────────────────────────────────────────────
-export function createOAuth2Client(): OAuth2Client {
+export async function createOAuth2Client(): Promise<OAuth2Client | null> {
+  const google = await getGoogle();
+  if (!google) return null;
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID!,
     process.env.GOOGLE_CLIENT_SECRET!,
-    process.env.GOOGLE_REDIRECT_URI ?? `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/api/connectors/google/callback`
+    process.env.GOOGLE_REDIRECT_URI ??
+      `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/api/connectors/google/callback`
   );
 }
 
 // ── Generate consent URL ──────────────────────────────────────────────────────
-export function getAuthUrl(): string {
-  const client = createOAuth2Client();
+export async function getAuthUrl(): Promise<string | null> {
+  const client = await createOAuth2Client();
+  if (!client) return null;
   return client.generateAuthUrl({
     access_type: "offline",
     scope: GOOGLE_SCOPES,
-    prompt: "consent", // always get refresh_token
+    prompt: "consent",
   });
 }
 
 // ── Exchange code for tokens ──────────────────────────────────────────────────
-export async function exchangeCodeForTokens(code: string): Promise<Credentials> {
-  const client = createOAuth2Client();
+export async function exchangeCodeForTokens(code: string): Promise<Credentials | null> {
+  const client = await createOAuth2Client();
+  if (!client) return null;
   const { tokens } = await client.getToken(code);
   return tokens;
 }
@@ -58,19 +82,12 @@ export async function exchangeCodeForTokens(code: string): Promise<Credentials> 
 export async function saveGoogleTokens(tokens: Credentials): Promise<void> {
   await db
     .insert(settings)
-    .values({
-      key: TOKENS_KEY,
-      value: tokens as Record<string, unknown>,
-    })
+    .values({ key: TOKENS_KEY, value: tokens as Record<string, unknown> })
     .onConflictDoUpdate({
       target: settings.key,
-      set: {
-        value: tokens as Record<string, unknown>,
-        updatedAt: new Date(),
-      },
+      set: { value: tokens as Record<string, unknown>, updatedAt: new Date() },
     });
 
-  // Upsert connector row
   const existing = await db
     .select({ id: connectors.id })
     .from(connectors)
@@ -78,17 +95,10 @@ export async function saveGoogleTokens(tokens: Credentials): Promise<void> {
     .limit(1);
 
   const now = new Date();
-
   if (existing[0]) {
     await db
       .update(connectors)
-      .set({
-        isActive: true,
-        scopes: GOOGLE_SCOPES,
-        connectedAt: now,
-        syncStatus: "idle",
-        errorMessage: null,
-      })
+      .set({ isActive: true, scopes: GOOGLE_SCOPES, connectedAt: now, syncStatus: "idle", errorMessage: null })
       .where(eq(connectors.provider, "google"));
   } else {
     await db.insert(connectors).values({
@@ -108,7 +118,6 @@ export async function loadGoogleTokens(): Promise<Credentials | null> {
     .from(settings)
     .where(eq(settings.key, TOKENS_KEY))
     .limit(1);
-
   return (rows[0]?.value as Credentials) ?? null;
 }
 
@@ -117,12 +126,11 @@ export async function getAuthenticatedClient(): Promise<OAuth2Client | null> {
   const tokens = await loadGoogleTokens();
   if (!tokens?.refresh_token) return null;
 
-  const client = createOAuth2Client();
+  const client = await createOAuth2Client();
+  if (!client) return null;
   client.setCredentials(tokens);
 
-  // googleapis auto-refreshes when access_token is expired using refresh_token
-  // Persist refreshed tokens if they changed
-  client.on("tokens", async (newTokens) => {
+  client.on("tokens", async (newTokens: Credentials) => {
     const merged = { ...tokens, ...newTokens };
     await saveGoogleTokens(merged).catch(() => {});
   });
@@ -132,18 +140,15 @@ export async function getAuthenticatedClient(): Promise<OAuth2Client | null> {
 
 // ── Disconnect ────────────────────────────────────────────────────────────────
 export async function disconnectGoogle(): Promise<void> {
-  // Revoke token at Google
   const tokens = await loadGoogleTokens();
   if (tokens?.access_token) {
-    const client = createOAuth2Client();
-    client.setCredentials(tokens);
-    await client.revokeCredentials().catch(() => {});
+    const client = await createOAuth2Client();
+    if (client) {
+      client.setCredentials(tokens);
+      await client.revokeCredentials().catch(() => {});
+    }
   }
-
-  // Remove from settings
   await db.delete(settings).where(eq(settings.key, TOKENS_KEY));
-
-  // Mark connector as inactive
   await db
     .update(connectors)
     .set({ isActive: false, syncStatus: "idle", errorMessage: null })
@@ -167,10 +172,12 @@ export async function getGoogleConnectionStatus(): Promise<{
 
   if (!row[0]?.isActive) return { connected: false };
 
-  // Try to get user info to verify token is valid
   try {
     const client = await getAuthenticatedClient();
     if (!client) return { connected: false };
+
+    const google = await getGoogle();
+    if (!google) return { connected: false };
 
     const oauth2 = google.oauth2({ version: "v2", auth: client });
     const userInfo = await oauth2.userinfo.get();
@@ -184,8 +191,6 @@ export async function getGoogleConnectionStatus(): Promise<{
       syncStatus: row[0].syncStatus,
     };
   } catch {
-    return {
-      connected: false,
-    };
+    return { connected: false };
   }
 }
