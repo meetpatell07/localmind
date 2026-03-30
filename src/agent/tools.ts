@@ -9,12 +9,23 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { createHash } from "crypto";
 import { eq } from "drizzle-orm";
-import { google } from "googleapis";
-import type { gmail_v1 } from "googleapis";
-import path from "path";
-import fs from "fs/promises";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GmailV1Part = any;
+
+// Dynamic imports — Node.js-only modules fail gracefully on edge
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getGoogle(): Promise<any | null> {
+  try { const m = await import("googleapis"); return m.google; } catch { return null; }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getFs(): Promise<any | null> {
+  try { return await import("fs/promises"); } catch { return null; }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getPath(): Promise<any | null> {
+  try { return (await import("path")).default; } catch { return null; }
+}
 import { db } from "@/db";
 import { userProfile, tasks } from "@/db/schema";
 import { searchSimilar, embedAndStore } from "@/memory/semantic";
@@ -80,18 +91,23 @@ async function upsertProfileField(field: ProfileFieldKey, value: string): Promis
   hot.delete(HOT_KEY.userIdentity());
 }
 
-/** Deterministic 16-char hex hash of a query string for recall caching. */
+/** Deterministic 16-char hex hash of a query string for recall caching (djb2). */
 function hashQuery(q: string): string {
-  return createHash("sha256").update(q.toLowerCase().trim()).digest("hex").slice(0, 16);
+  const s = q.toLowerCase().trim();
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = (((h << 5) + h) ^ s.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0").repeat(2).slice(0, 16);
 }
 
 // ── Gmail helpers ─────────────────────────────────────────────────────────────
 
 function decodeBase64(data: string): string {
-  return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8");
+  return atob(data.replace(/-/g, "+").replace(/_/g, "/"));
 }
 
-function extractBody(payload: gmail_v1.Schema$MessagePart | undefined, depth = 0): string {
+function extractBody(payload: GmailV1Part | undefined, depth = 0): string {
   if (!payload || depth > 5) return "";
   if (payload.body?.data) {
     const text = decodeBase64(payload.body.data);
@@ -117,7 +133,7 @@ function extractBody(payload: gmail_v1.Schema$MessagePart | undefined, depth = 0
   return "";
 }
 
-function getHeader(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, name: string): string {
+function getHeader(headers: GmailV1Part[] | undefined, name: string): string {
   return headers?.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
 
@@ -414,11 +430,14 @@ export const emailTools = {
       const auth = await getAuthenticatedClient();
       if (!auth) return { error: "Gmail not connected. Ask the user to connect in Settings." };
       try {
-        const gmail = google.gmail({ version: "v1", auth });
+        const _google = await getGoogle();
+        if (!_google) return { error: "Gmail unavailable on this runtime." };
+        const gmail = _google.gmail({ version: "v1", auth });
         const listRes = await gmail.users.messages.list({ userId: "me", maxResults: args.maxResults, labelIds: args.labelIds });
         if (!listRes.data.messages?.length) return { emails: [], total: 0 };
         const emails = await Promise.all(
-          listRes.data.messages.map(async (msg) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          listRes.data.messages.map(async (msg: any) => {
             const detail = await gmail.users.messages.get({
               userId: "me", id: msg.id!, format: "metadata",
               metadataHeaders: ["From", "To", "Subject", "Date"],
@@ -453,11 +472,14 @@ export const emailTools = {
       const auth = await getAuthenticatedClient();
       if (!auth) return { error: "Gmail not connected." };
       try {
-        const gmail = google.gmail({ version: "v1", auth });
+        const _google = await getGoogle();
+        if (!_google) return { error: "Gmail unavailable on this runtime." };
+        const gmail = _google.gmail({ version: "v1", auth });
         const listRes = await gmail.users.messages.list({ userId: "me", q: args.query, maxResults: args.maxResults });
         if (!listRes.data.messages?.length) return { emails: [], query: args.query, total: 0 };
         const emails = await Promise.all(
-          listRes.data.messages.map(async (msg) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          listRes.data.messages.map(async (msg: any) => {
             const detail = await gmail.users.messages.get({
               userId: "me", id: msg.id!, format: "metadata",
               metadataHeaders: ["From", "To", "Subject", "Date"],
@@ -490,7 +512,9 @@ export const emailTools = {
       const auth = await getAuthenticatedClient();
       if (!auth) return { error: "Gmail not connected." };
       try {
-        const gmail = google.gmail({ version: "v1", auth });
+        const _google = await getGoogle();
+        if (!_google) return { error: "Gmail unavailable on this runtime." };
+        const gmail = _google.gmail({ version: "v1", auth });
         const msg = await gmail.users.messages.get({ userId: "me", id: args.emailId, format: "full" });
         const h    = msg.data.payload?.headers;
         return {
@@ -533,7 +557,9 @@ Returns a list of events for the next N days and derived free windows (9am–6pm
       if (!auth) return { error: "Google not connected. Connect in Settings → Connections." };
 
       try {
-        const calendar = google.calendar({ version: "v3", auth });
+        const _google = await getGoogle();
+        if (!_google) return { error: "Google API unavailable on this runtime." };
+        const calendar = _google.calendar({ version: "v3", auth });
 
         const now      = new Date();
         const rangeEnd = new Date(now.getTime() + args.days * 86_400_000);
@@ -547,7 +573,8 @@ Returns a list of events for the next N days and derived free windows (9am–6pm
           maxResults:   30,
         });
 
-        const events = (eventsRes.data.items ?? []).map((ev) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const events = (eventsRes.data.items ?? []).map((ev: any) => ({
           title:    ev.summary ?? "(no title)",
           start:    ev.start?.dateTime ?? ev.start?.date ?? "",
           end:      ev.end?.dateTime   ?? ev.end?.date   ?? "",
@@ -637,7 +664,9 @@ The tool saves the draft and returns a preview so the user can confirm.
       if (!auth) return { error: "Gmail not connected." };
 
       try {
-        const gmail = google.gmail({ version: "v1", auth });
+        const _google = await getGoogle();
+        if (!_google) return { error: "Gmail unavailable on this runtime." };
+        const gmail = _google.gmail({ version: "v1", auth });
 
         // Fetch original email headers
         const original = await gmail.users.messages.get({
@@ -648,10 +677,14 @@ The tool saves the draft and returns a preview so the user can confirm.
         });
 
         const h         = original.data.payload?.headers ?? [];
-        const from      = h.find((x) => x.name?.toLowerCase() === "from")?.value      ?? "";
-        const subject   = h.find((x) => x.name?.toLowerCase() === "subject")?.value   ?? "";
-        const messageId = h.find((x) => x.name?.toLowerCase() === "message-id")?.value ?? "";
-        const refs      = h.find((x) => x.name?.toLowerCase() === "references")?.value ?? "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const from      = h.find((x: any) => x.name?.toLowerCase() === "from")?.value      ?? "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const subject   = h.find((x: any) => x.name?.toLowerCase() === "subject")?.value   ?? "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const messageId = h.find((x: any) => x.name?.toLowerCase() === "message-id")?.value ?? "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const refs      = h.find((x: any) => x.name?.toLowerCase() === "references")?.value ?? "";
         const threadId  = original.data.threadId ?? undefined;
 
         const replySubject = subject.toLowerCase().startsWith("re:")
@@ -768,7 +801,7 @@ interface AttachmentMeta {
   size: number;
 }
 
-function findAttachments(part: gmail_v1.Schema$MessagePart | undefined): AttachmentMeta[] {
+function findAttachments(part: GmailV1Part | undefined): AttachmentMeta[] {
   if (!part) return [];
   const results: AttachmentMeta[] = [];
 
@@ -791,7 +824,8 @@ function findAttachments(part: gmail_v1.Schema$MessagePart | undefined): Attachm
 }
 
 async function downloadAndVaultAttachment(
-  gmail: gmail_v1.Gmail,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  gmail: any,
   messageId: string,
   att: AttachmentMeta,
   emailSubject: string
@@ -807,25 +841,31 @@ async function downloadAndVaultAttachment(
     if (!rawB64) return null;
 
     // Gmail uses base64url — convert to standard base64
-    const buffer = Buffer.from(rawB64.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    const b64 = rawB64.replace(/-/g, "+").replace(/_/g, "/");
+    const binary = atob(b64);
+    const buffer = Uint8Array.from(binary, (c) => c.charCodeAt(0));
 
     // Dedup: skip if same file (name + size) already saved from email
     const alreadyExists = await emailAttachmentExists(att.filename, buffer.length);
     if (alreadyExists) return null;
 
-    // Save to vault under YYYY/MM/DD structure
+    // Save to vault under YYYY/MM/DD structure (Node.js only — fails gracefully on edge)
+    const fsModule = await getFs();
+    const pathModule = await getPath();
+    if (!fsModule || !pathModule) return null;
+
     await ensureVaultDir();
     const now = new Date();
     const subDir = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
     const fullDir = getVaultPath(subDir);
-    await fs.mkdir(fullDir, { recursive: true });
+    await fsModule.mkdir(fullDir, { recursive: true });
 
     const safeName = att.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
     const uniqueName = `${Date.now()}_${safeName}`;
-    const relativePath = path.join(subDir, uniqueName);
+    const relativePath = pathModule.join(subDir, uniqueName);
     const fullPath = getVaultPath(relativePath);
 
-    await fs.writeFile(fullPath, buffer);
+    await fsModule.writeFile(fullPath, buffer);
 
     const record = await indexFile({
       fileName:  att.filename,
@@ -902,7 +942,9 @@ If neither is given, default query to "has:attachment" (last 3 emails with any a
     }
 
     try {
-      const gmail = google.gmail({ version: "v1", auth });
+      const _google = await getGoogle();
+      if (!_google) return { success: false, error: "Google API unavailable on this runtime." };
+      const gmail = _google.gmail({ version: "v1", auth });
       const messageIds: string[] = [];
 
       if (args.emailId) {
@@ -922,7 +964,8 @@ If neither is given, default query to "has:attachment" (last 3 emails with any a
           return { success: false, message: `No emails found matching: "${q}"` };
         }
 
-        messageIds.push(...listRes.data.messages.map((m) => m.id!));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        messageIds.push(...listRes.data.messages.map((m: any) => m.id!));
       }
 
       const saved: Array<{ emailSubject: string; files: string[] }> = [];

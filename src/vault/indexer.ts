@@ -1,17 +1,36 @@
 import { db } from "@/db";
 import { vaultFiles } from "@/db/schema";
 import { desc, ilike, eq, sql } from "drizzle-orm";
-import path from "path";
-import fs from "fs/promises";
+// Lazy vault directory resolver — safe to import on edge (no module-level side-effects)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getNodeModules(): Promise<{ path: any; fs: any } | null> {
+  try {
+    const [pathMod, fsMod] = await Promise.all([import("path"), import("fs/promises")]);
+    return { path: pathMod.default, fs: fsMod };
+  } catch {
+    return null;
+  }
+}
 
-const VAULT_DIR = path.join(process.cwd(), "vault");
+function resolveVaultDir(): string {
+  // process.cwd() throws on CF edge — catch and return a placeholder
+  try { return `${process.cwd()}/vault`; } catch { return "/vault"; }
+}
 
 export async function ensureVaultDir(): Promise<void> {
-  await fs.mkdir(VAULT_DIR, { recursive: true });
+  const mods = await getNodeModules();
+  if (!mods) return;
+  const dir = resolveVaultDir();
+  await mods.fs.mkdir(dir, { recursive: true });
 }
 
 export function getVaultPath(relativePath: string): string {
-  return path.join(VAULT_DIR, relativePath);
+  // Synchronous best-effort — works on Node.js, returns placeholder on edge
+  try {
+    return `${resolveVaultDir()}/${relativePath.replace(/\\/g, "/")}`;
+  } catch {
+    return `/vault/${relativePath}`;
+  }
 }
 
 export async function indexFile(params: {
@@ -63,8 +82,11 @@ export async function deleteFile(fileId: string): Promise<boolean> {
 
   // Remove physical file — best-effort (may already be gone)
   try {
-    const fullPath = getVaultPath(rows[0].filePath);
-    await fs.unlink(fullPath);
+    const mods = await getNodeModules();
+    if (mods) {
+      const fullPath = getVaultPath(rows[0].filePath);
+      await mods.fs.unlink(fullPath);
+    }
   } catch {
     // File already deleted or path invalid — not an error
   }

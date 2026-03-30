@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { conversations, sessions } from "@/db/schema";
 import { eq, desc, isNotNull, isNull, count, sql, and } from "drizzle-orm";
-import { randomUUID } from "crypto";
+// Use Web Crypto randomUUID (available on both Node.js 19+ and edge runtimes)
+const randomUUID = () => globalThis.crypto.randomUUID();
 
 export interface SessionListItem {
   id: string;
